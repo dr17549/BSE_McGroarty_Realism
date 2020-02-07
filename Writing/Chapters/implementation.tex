@@ -34,6 +34,7 @@ Noise trader & The noise trader are defined so that it captures other activities
 \newline $\lambda$ : a uniformly generated random value s.t. $\lambda_{crs} + \lambda_{inspr} + \lambda_{spr} + \lambda_{offspr} = 1$}  \\
 \hline
 \end{tabular}
+\caption{McG Agents description and main parameters adapted from \cite{McGroarty}}
 \end{table}
 \FloatBarrier 
 
@@ -211,12 +212,12 @@ McG's model does not rely on the assignments like the BSE. It relies on the ``be
 In the new implementation which this project is trying to achieve is finding a way to integrate these two systems so that the McG agents will be able to mimic the real market environment for the agents such as ZIP, ZIC and AA implemented in the BSE. This implementation requires a few changes.
 
 \begin{itemize}
-    \item  \textbf{Quantity} : The current version of the BSE does not support orders with quantity more than 1.This has to be change because all of McGroarty et al. agents require their market to be able to receive orders with quantity more than 1. 
+    \item  \textbf{Quantity} : The current version of the BSE does not support orders with quantity more than 1. This has to be change because all of McGroarty et al. agents require their market to be able to receive orders with quantity more than 1. 
     \item  \textbf{Accepting more than one order per round}: In the current version, the BSE only accepts one order randomly from an agent in a time step. Agents such as the Market maker must be able to submit more than one order in every round. 
     \item \textbf{Deleting an order} : The current version of the BSE does not fully support an agent cancelling their order directly. This has to be implemented as a part of the system since McGroarty et al. agents are capable of cancelling an order.
 \end{itemize} 
 
-\section{The availability of Best Price in the BSE}
+\section{Best Price in the BSE}
 Some of McG's agents depend on the "best price" of a side of the book in order to submit an order. However, unlike the real exchange market, the BSE does not always provide that, more specifically in the beginning of the trading day. This means that there must be some unavoidable modifications to the McG's agents condition regarding order submission. There are multiple approaches in which the project will explore, including:
 
 \begin{itemize}
