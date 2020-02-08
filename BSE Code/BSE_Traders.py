@@ -14,8 +14,9 @@ class Trader:
                 self.ttype = ttype      # what type / strategy this trader is
                 self.tid = tid          # trader unique ID code
                 self.balance = balance  # money in the bank
+                self.live_orders = []   # orders that must be deleted before adding a new one
                 self.blotter = []       # record of trades executed
-                self.orders = []        # customer orders currently being worked (fixed at 1)
+                self.orders = []        # customer orders currently being worked
                 self.n_quotes = 0       # number of quotes live on LOB
                 self.willing = 1        # used in ZIP etc
                 self.able = 1           # used in ZIP etc
@@ -39,16 +40,15 @@ class Trader:
                     response = 'LOB_Cancel'
                 else:
                     response = 'Proceed'
-                self.orders = [order]
+                self.orders.append(order)
                 if verbose : print('add_order < response=%s' % response)
                 return response
 
 
         def del_order(self, order, actual_quantity_traded):
-                #todo change this and change a lot
-                # this is lazy: assumes each trader has only one customer order with quantity=1, so deleting sole order
-                # CHANGE TO DELETE THE HEAD OF THE LIST AND KEEP THE TAIL
                 verbose = False
+                if verbose:
+                    print("&& ______ DEL FUNCTION CALLED")
                 for iter in range(len(self.orders)):
                     if self.orders[iter] == order and actual_quantity_traded == order.qty:
                         if verbose:
@@ -56,8 +56,12 @@ class Trader:
                         self.orders.pop(iter)
                         break
                     elif self.orders[iter] == order and actual_quantity_traded < order.qty:
+                        if True:
+                            print("DEL ORDER FROM " + str(self.orders[iter].qty) + " TO " + str(self.orders[iter].qty - actual_quantity_traded))
+
                         self.orders[iter].qty = self.orders[iter].qty - actual_quantity_traded
-                        if verbose:
+                        if True:
+
                             print("@@ DEL_2ND_ORDER : change value of order as : " + str(self.orders[iter]) + " which matched : " + str(order))
                         break
                 # this cannot happen because it is simply not possible
@@ -93,11 +97,7 @@ class Trader:
                 if verbose: print('%s profit=%d balance=%d profit/time=%d' % (outstr, profit, self.balance, self.profitpertime))
 
                 # todo does this assume that the order is a just an order, no quantity?
-                self.del_order(order, actual_quantity_traded)  # delete the order
-                print("_____ ORDER AFTER BOOK KEEP OF " + str(self.tid) +"_____")
-                print("DELETED : ")
-                for temp in self.orders:
-                    print(temp)
+                # self.del_order(order, actual_quantity_traded)  # delete the order
 
 
         # specify how trader responds to events in the market
@@ -455,7 +455,7 @@ class Market_Maker(Trader):
         self.beta_random = 0.1
         self.moving_average = 0
         self.moving_decision = 0
-        self.live_orders = []
+        self.last_orders = []
 
     # update moving average of price with normal moving average
     def update_moving_avg(self, lob):
@@ -727,7 +727,7 @@ class Mean_Reversion(Trader):
 
     def respond(self, time, lob, trade, verbose):
         if len(self.orders) > 1:
-            print("MEAN_R RESPONDED")
+            # print("MEAN_R RESPONDED")
             if lob['asks']['best'] != None and lob['bids']['best'] != None:
                 current_price = (lob['asks']['best'] + lob['bids']['best']) / 2
                 self.ema = self.ema + (self.discount_offset * (current_price - self.ema))
@@ -736,7 +736,7 @@ class Mean_Reversion(Trader):
     def getorder(self, time, countdown, lob):
         order_submit = []
         if len(self.orders) > 0:
-            print("MEAN REVERSED SUBMITTED ORDER")
+            # print("MEAN REVERSED SUBMITTED ORDER")
             if lob['asks']['best'] != None and lob['bids']['best'] != None:
                 current_price = (lob['asks']['best'] + lob['bids']['best']) / 2
                 best_price_ask = lob['asks']['best']
@@ -767,7 +767,6 @@ class Mean_Reversion(Trader):
 
             # update the exponential moving avg
             self.ema = self.ema + (self.discount_offset * (current_price - self.ema))
-            print(order)
             if order != None:
                 order_submit.append(order)
         return order_submit, []

@@ -81,6 +81,9 @@ class Orderbook_half:
                 self.orders[order.tid] = order
                 self.n_orders = len(self.orders)
                 self.build_lob()
+                print(self.n_orders)
+                print("ADDED LOB" + str(self.lob))
+
                 #print('book_add < %s %s' % (order, self.orders))
                 if n_orders != self.n_orders :
                     return('Addition')
@@ -117,6 +120,8 @@ class Orderbook_half:
                         del(self.lob[self.best_price])
                         del(self.orders[best_price_counterparty])
                         self.n_orders = self.n_orders - 1
+                        print("ORDER N : " + str(self.n_orders))
+                        print(self.lob)
                         if self.n_orders > 0:
                                 if self.booktype == 'Bid':
                                         self.best_price = max(self.lob.keys())
@@ -137,15 +142,16 @@ class Orderbook_half:
                                 lob_list[0][1] = first_order_quantity - 1
                                 self.lob[self.best_price] = [best_price_qty - 1, lob_list]
                         else:
+                                self.n_orders -= 1
                                 self.lob[self.best_price] = [best_price_qty - 1, best_price_orders[1][:1]]
 
                         # update the bid list: counterparty's bid has been deleted
                         # del (self.orders[best_price_counterparty])
+                        print("ORDER N : " + str(self.n_orders))
                         if first_order_quantity > 1:
                                 self.orders[best_price_counterparty].qty -= 1
                         else:
                                 del (self.orders[best_price_counterparty])
-                        self.n_orders = self.n_orders - 1
                 else:
                         print("BEST PRICE QTY : " + str(best_price_qty))
                         print("Do nothing because there is nothing at the other side? ")
@@ -195,6 +201,7 @@ class Orderbook_half:
                         del (self.lob[self.best_price])
                         del (self.orders[best_price_counterparty])
                         self.n_orders = self.n_orders - 1
+                        # print("$$$$$ DEC == 1-- ORDER N : " + str(self.n_orders))
                         if self.n_orders > 0:
                                 if self.booktype == 'Bid':
                                         self.best_price = max(self.lob.keys())
@@ -210,25 +217,30 @@ class Orderbook_half:
                          Then 1. check if there is only 1 element in that price level, if yes, then decrease both the quantity inside and the quantity overall
                                2. IF NOT then decremenet the right order from the right trader, then decremenet the overall quantity as well '''
 
-                        element_in_lobprice = 0
                         # decrease quantity in the right element
-                        first_order_quantity = 0
+                        first_order_quantity = self.lob[price][0]
                         for agent_submitted in range(len(self.lob[price][1])):
-                                print(agent_submitted)
                                 if self.lob[price][1][agent_submitted][2] == best_price_counterparty:
-                                        first_order_quantity = self.lob[price][1][agent_submitted][1]
-                                        self.lob[price][1][agent_submitted][1] -= 1
-                                        element_in_lobprice = agent_submitted
+                                        if self.lob[price][1][agent_submitted][1] == 1:
+                                                del(self.lob[price][1][agent_submitted])
+                                                self.n_orders -= 1
+                                                break
+                                        else:
+                                                # first_order_quantity = self.lob[price][1][agent_submitted][1]
+                                                self.lob[price][1][agent_submitted][1] -= 1
+                                                break
+
+                                        # element_in_lobprice = agent_submitted
 
                         #decrement price overall
                         self.lob[price][0] -= 1
+                        # print(" > 1 $$$$$$ DEC -- ORDER N : " + str(self.n_orders))
 
-                        # Decrement the overall quantity
+                        # Decrement the overall quantity - not correct !!
                         if first_order_quantity > 1:
                                 self.orders[best_price_counterparty].qty -= 1
                         else:
-                                del(self.orders[best_price_counterparty])
-                        self.n_orders = self.n_orders - 1
+                                del(self.orders[price])
                 else:
                         print("Do nothing because there is nothing at the other side? ")
                         sys.exit("IT SHOULD DO THIS IN ANYCASE in DEC ORDER ")

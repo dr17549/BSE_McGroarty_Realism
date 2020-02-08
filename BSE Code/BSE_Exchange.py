@@ -82,7 +82,7 @@ class Exchange(Orderbook):
 
 
 
-    def process_order2(self, time, order, verbose):
+    def process_order2(self, time, order, verbose, traderlist, traders):
         # receive an order and either add it to the relevant LOB (ie treat as limit order)
         # or if it crosses the best counterparty offer, execute it (treat as a market order)
 
@@ -97,12 +97,14 @@ class Exchange(Orderbook):
         oprice = order.price
         counterparty = []
         order_quantity = order.qty
-        #todo should add and build a new lob at this point
+
         [qid, response] = self.add_order(order, verbose)  # add it to the order lists -- overwriting any previous order
+
         order.qid = qid
         if verbose:
             print('QUID: order.quid=%d' % order.qid)
             print('RESPONSE: %s' % response)
+
         best_ask = self.asks.best_price
         best_ask_tid = self.asks.best_tid
         best_bid = self.bids.best_price
@@ -117,11 +119,16 @@ class Exchange(Orderbook):
         print(self.bids.lob)
         print("______________________________END BOOK ______________________________________")
         print_check = True
+
+
         if order.ostyle == 'LIM':
+
+            original_quantity = order.qty
             if order.otype == 'Bid':
                 # if False:
                 #     print("BID : Best ask : " + str(best_bid) + " >= " + str(best_ask) + " Orders : " + str(self.asks.n_orders > 0))
 
+                #todo all n_orders are wrong because it's total orders not total quantity
                 if self.asks.n_orders > 0 and best_bid >= best_ask:
 
                     remaining_quantity = order.qty
@@ -134,6 +141,7 @@ class Exchange(Orderbook):
                             print(" ___ DELETE BEST BID : ")
                         self.bids.decrement_order(oprice, order.tid)
                         remaining_quantity = remaining_quantity - 1
+                        order_quantity = original_quantity - remaining_quantity
             else:
                 # if False:
                 #     print("ASK : Best bid : " + str(best_ask) + " <= " + str(best_bid) + " Orders : " + str(self.bids.n_orders > 0))
@@ -150,9 +158,11 @@ class Exchange(Orderbook):
                             print(" ___ DELETE BEST BID : ")
                         self.bids.delete_best()
                         remaining_quantity = remaining_quantity - 1
+                        order_quantity = original_quantity - remaining_quantity
 
         # market order takes anything with the given quantity at any price
         elif order.ostyle == 'MKT':
+            remaining_quantity = 0
             original_quantity = order.qty
             if verbose:
                 print("&&&& Process MKT Order")
@@ -163,12 +173,15 @@ class Exchange(Orderbook):
                         counterparty = self.append_counter_party(counterparty, best_ask_tid, best_ask)
                         print("__ ASK SIDE __ : ")
                         self.asks.delete_best()
+                        print("BID -- LOB N ORDERS : " + str(self.asks.n_orders))
                         print("__BID SIDE __ : ")
                         self.bids.decrement_order(oprice, order.tid)
+                        print("BID -DEC- LOB N ORDERS : " + str(self.bids.n_orders))
                         # self.bids.delete_best()
-                        order_quantity = original_quantity - remaining_quantity
                         remaining_quantity = remaining_quantity - 1
-                    #todo might be an error here but solve it later - check in function if it actually deletes the right order in the LOB
+                        #todo this is somehow wrong
+                        order_quantity = original_quantity - remaining_quantity
+                    # delete order just incase it's still there in the LOB
                     self.bids.book_del(order)
             else:
                 if self.bids.n_orders > 0:
@@ -178,44 +191,21 @@ class Exchange(Orderbook):
                         counterparty = self.append_counter_party(counterparty, best_bid_tid, best_bid)
                         print("__BID SIDE __ : ")
                         self.bids.delete_best()
+                        print("++ ASK -- BID SIDE ORDERS : " + str(self.bids.n_orders))
                         print("__ ASK SIDE __ : ")
                         self.asks.decrement_order(oprice, order.tid)
-                        order_quantity = original_quantity - remaining_quantity
+                        print("++ ASK -DEC- BID SIDE ORDERS : " + str(self.asks.n_orders))
+                        print("LOB N ORDERS : " + str(self.bids.n_orders))
                         remaining_quantity = remaining_quantity - 1
-                    # todo might be an error here but solve it later
+                        order_quantity = original_quantity - remaining_quantity
+                    # delete order just incase it's still there
                     self.asks.book_del(order)
 
-        # OLD CODE
-        # -----------------------------------------------------
-        # if order.otype == 'Bid':
-        #     if self.asks.n_orders > 0 and best_bid >= best_ask:
-        #         # bid lifts the best ask
-        #         if verbose: print("Bid $%s lifts best ask" % oprice)
-        #         counterparty = best_ask_tid
-        #         price = best_ask  # bid crossed ask, so use ask price
-        #         if verbose: print('counterparty, price', counterparty, price)
-        #         # delete the ask just crossed
-        #         self.asks.delete_best()
-        #         # delete the bid that was the latest order
-        #         self.bids.delete_best()
-
-        # elif order.otype == 'Ask':
-        #     if self.bids.n_orders > 0 and best_ask <= best_bid:
-        #         # ask hits the best bid
-        #         if verbose: print("Ask $%s hits best bid" % oprice)
-        #         # remove the best bid
-        #         counterparty = best_bid_tid
-        #         price = best_bid  # ask crossed bid, so use bid price
-        #         if verbose: print('counterparty, price', counterparty, price)
-        #         # delete the bid just crossed, from the exchange's records
-        #         self.bids.delete_best()
-        #         # delete the ask that was the latest order, from the exchange's records
-        #         self.asks.delete_best()
-        # -----------------------------------------------------
 
         else:
             # we should never get here
             sys.exit('process_order() given neither Bid nor Ask')
+
         if True:
             print("TRADE ORIGINAL :" + str(order.tid) + "  COUNTER PARTY of TRADE : " + str(counterparty))
             if len(counterparty) > 0 :
