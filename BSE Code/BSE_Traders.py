@@ -472,14 +472,14 @@ class Market_Maker(Trader):
     def getorder(self, time, countdown, lob):
         #random using guassian
         order = []
+        list_order = []
         order_style = 'LIM'
         verbose = True
         # if less than random, trade
-        if len(self.orders) < 1:
-            return order,[]
+        # if len(self.orders) < 1:
+        #     return order,[]
 
         if random.random() < self.beta_random and lob['asks']['best'] != None and lob['bids']['best'] != None:
-
             if verbose:
                 print("____ MARKET MAKER LOGIC ____")
             quantity_vdash = 1
@@ -489,17 +489,14 @@ class Market_Maker(Trader):
             # todo check if order is live or not
             # cancel one of them by using del_exch_order(self, oid, verbose) or del_cust_order
             if len(self.orders) > 1:
-                for orders in self.live_orders[1:len(self.live_orders)]:
+                for orders in self.live_orders[0:len(self.live_orders)]:
                     delete.append(orders)
             #reset the live order array
             self.live_orders = []
 
             # predicts next order is buy
-            # todo possible problem - everybody is submitting a Bid and nobody is asking for that price
             if self.moving_average < 0.5:
                 # Update moving average
-                list_order = []
-                #todo moving average still not clear
                 self.moving_average = (1 + self.moving_average) / 2
 
                 # Submit sell at best price with volume = U(vmin,vmax)

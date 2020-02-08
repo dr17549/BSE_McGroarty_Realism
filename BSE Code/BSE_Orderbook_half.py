@@ -82,7 +82,7 @@ class Orderbook_half:
                 self.n_orders = len(self.orders)
                 self.build_lob()
                 print(self.n_orders)
-                print("ADDED LOB" + str(self.lob))
+                # print("ADDED LOB" + str(self.lob))
 
                 #print('book_add < %s %s' % (order, self.orders))
                 if n_orders != self.n_orders :

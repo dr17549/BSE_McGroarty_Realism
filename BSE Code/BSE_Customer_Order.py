@@ -159,26 +159,22 @@ def customer_orders(time, last_update, traders, trader_stats, os, pending, verbo
         ordertype = 'Bid'
         (sched, mode) = getschedmode(time, os['dem'])
         for t in range(n_buyers):
-            issuetime = time + issuetimes[t]
-            tname = 'B%02d' % t
-            orderprice = getorderprice(t, sched, n_buyers, mode, issuetime)
-            print("BUYER : " + str(t) + "Init order price " + str(orderprice) )
-            order = Order(tname, ordertype, orderprice, 1, issuetime, -3.14, 'LIM')
-            print(str(order))
-            new_pending.append(order)
+                issuetime = time + issuetimes[t]
+                tname = 'B%02d' % t
+                orderprice = getorderprice(t, sched, n_buyers, mode, issuetime)
+                order = Order(tname, ordertype, orderprice, 1, issuetime, -3.14, 'LIM')
+                new_pending.append(order)
 
         # supply side (sellers)
         issuetimes = getissuetimes(n_sellers, os['timemode'], os['interval'], shuffle_times, True)
         ordertype = 'Ask'
         (sched, mode) = getschedmode(time, os['sup'])
         for t in range(n_sellers):
-            issuetime = time + issuetimes[t]
-            tname = 'S%02d' % t
-            orderprice = getorderprice(t, sched, n_sellers, mode, issuetime)
-            print("SELLER : " + str(t) + " Init order price : " + str(orderprice))
-            order = Order(tname, ordertype, orderprice, 1, issuetime, -3.14, 'LIM')
-            print(order)
-            new_pending.append(order)
+                issuetime = time + issuetimes[t]
+                tname = 'S%02d' % t
+                orderprice = getorderprice(t, sched, n_sellers, mode, issuetime)
+                order = Order(tname, ordertype, orderprice, 1, issuetime, -3.14, 'LIM')
+                new_pending.append(order)
 
     # this is when the customer pending from the above from last round is issued
     else:

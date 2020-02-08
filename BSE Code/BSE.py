@@ -86,6 +86,7 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dum
         respond_verbose = False
         bookkeep_verbose = False
         inside_trade_verbose = False
+        mcg_names = ['MARKET_M', "LIQ", "NOISE", "MOMENTUM", "MEAN_R"]
 
         pending_cust_orders = []
 
@@ -111,7 +112,7 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dum
                 trade = None
 
                 # this one gives assignments to traders
-                # todo there is a problem here with the McGroarty Agents assignments 
+                # todo there is a problem here with the McGroarty Agents assignments
                 [pending_cust_orders, kills] = customer_orders(time, last_update, traders, trader_stats,
                                                  order_schedule, pending_cust_orders, orders_verbose)
 
@@ -145,7 +146,6 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dum
                         switch = 0
 
                 # trader selection of McGroarty's
-                # todo Also include the deleting clause and the order execution clause down below
                 # for tid in list(traders.keys()):
                 #         orders_from_agent, need_to_delete_orders = traders[tid].getorder(time, time_left,
                 #                                                                          exchange.publish_lob(time,
@@ -175,10 +175,38 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dum
 
 
                 # if verbose: print('Trader Quote: %s' % (order))
+                for temp_ord in traders[tid].orders:
+                        if temp_ord not in orders_from_agent:
+                                traders[tid].orders.remove(temp_ord)
+
                 for order in orders_from_agent:
                         if order != None:
-                                # if order.otype == 'Ask' and order.price < traders[tid].orders[0].price: sys.exit('Bad ask : original ask : ' + str(traders[tid].orders[0].price))
-                                # if order.otype == 'Bid' and order.price > traders[tid].orders[0].price: sys.exit('Bad bid : original bid : ' + str(traders[tid].orders[0].price))
+
+                                # if there is an order, you should first
+                                # 1. delete all old records
+                                #       a. delete in the personal self.orders
+                                #       b. delete in the exchange lob
+                                # 2. add new order -> which is done in the section below
+
+                                # kill orders that is less than the current assignment (customer order)
+                                for temp_id in list(traders.keys()):
+                                        most_recent_order = 0
+
+                                        if traders[temp_id].ttype not in mcg_names:
+                                                for iter_ord in traders[temp_id].orders:
+                                                        if iter_ord.qid < 0 and iter_ord.time > most_recent_order:
+                                                                most_recent_order = iter_ord.time
+
+                                                index_del = []
+                                                for iter_ord in range(len(traders[temp_id].orders)):
+                                                        if traders[temp_id].orders[iter_ord].time < most_recent_order:
+                                                                index_del.append(iter_ord)
+                                                for index in index_del:
+                                                        del(traders[temp_id].orders[index])
+
+
+
+                                # now we kill the orders that is less than the current one
                                 # send order to exchange
                                 if order.qty < 1:
                                         sys.exit("Order Quantity cannot be 0")
@@ -194,9 +222,9 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dum
                                                 if a_ord.qid not in qid:
                                                         qid.append(a_ord.qid)
                                                 else:
+                                                        print("TRADER TYPE : " + str(traders[trader_id].ttype))
                                                         for p_order in traders[trader_id].orders:
                                                                 print(p_order)
-                                                        print("TRADER TYPE : " + str(traders[trader_id].ttype))
                                                         sys.exit("Double QID in the same list")
                                 trade, actual_quantity_traded = exchange.process_order2(time, order, process_verbose,list(traders.keys()), traders)
 
@@ -236,14 +264,7 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dum
                                 # if there is no trade
                                 else:
                                         if order.ostyle == 'LIM':
-                                                # print("ADDED MANUALLY : " + str(tid))
-                                                # print(order)
-                                                # for ord in traders[tid].orders:
-                                                #         print(ord)
                                                 traders[tid].add_order(order, False)
-                                        # for check_order in traders[tid].orders:
-                                        #         print("____ CHECK ORDER ____")
-                                        #         print(str(check_order))
 
                                 # traders respond to whatever happened
                                 lob = exchange.publish_lob(time, lob_verbose)
@@ -282,7 +303,7 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dum
                                         if personal_order.qty == order[1] and price == personal_order.price and order[0] == personal_order.time:
                                                 found = True
                                 if not found:
-                                        print("NOT FOUND TID  : " + str(order))
+                                        print("NOT FOUND TID  : " + str(order) + str(traders[order[2]].ttype))
                                         print(exchange.asks.lob[price])
                                         for p_order in traders[order[2]].orders:
                                                 print(p_order)
@@ -390,11 +411,11 @@ if __name__ == "__main__":
         min_n = 1
 
         trialnumber = 1
-        buyers_spec = [('LIQ', 0), ('GVWY', 3),
-                                                       ('SMB', 0), ('MOMENTUM', 0), ('MARKET_M', 5),('MEAN_R', 0)]
+        buyers_spec = [('LIQ', 10), ('GVWY', 3),
+                                                       ('SMB', 0), ('MOMENTUM', 0), ('MARKET_M', 0),('MEAN_R', 0)]
         # sellers_spec = buyers_spec
-        sellers_spec = [('LIQ', 0), ('GVWY', 3),
-                                                       ('SMS', 0), ('MOMENTUM', 0), ('MARKET_M', 5),('MEAN_R', 0)]
+        sellers_spec = [('LIQ', 10), ('GVWY', 3),
+                                                       ('SMS', 0), ('MOMENTUM', 0), ('MARKET_M', 0),('MEAN_R', 0)]
         traders_spec = {'sellers':sellers_spec, 'buyers':buyers_spec}
 
 

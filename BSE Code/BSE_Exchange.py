@@ -128,7 +128,6 @@ class Exchange(Orderbook):
                 # if False:
                 #     print("BID : Best ask : " + str(best_bid) + " >= " + str(best_ask) + " Orders : " + str(self.asks.n_orders > 0))
 
-                #todo all n_orders are wrong because it's total orders not total quantity
                 if self.asks.n_orders > 0 and best_bid >= best_ask:
 
                     remaining_quantity = order.qty
@@ -179,10 +178,14 @@ class Exchange(Orderbook):
                         print("BID -DEC- LOB N ORDERS : " + str(self.bids.n_orders))
                         # self.bids.delete_best()
                         remaining_quantity = remaining_quantity - 1
-                        #todo this is somehow wrong
                         order_quantity = original_quantity - remaining_quantity
                     # delete order just incase it's still there in the LOB
                     self.bids.book_del(order)
+                    print("************** CHECKED BID")
+                    for price in self.bids.lob:
+                        for check_ord in self.bids.lob[price][1]:
+                            if check_ord[3] == order.qid:
+                                sys.exit("QID still in the list, not supposed to happen - from BID SIDE")
             else:
                 if self.bids.n_orders > 0:
                     remaining_quantity = order.qty
@@ -200,6 +203,11 @@ class Exchange(Orderbook):
                         order_quantity = original_quantity - remaining_quantity
                     # delete order just incase it's still there
                     self.asks.book_del(order)
+                    print("************** CHECKED ASK")
+                    for price in self.asks.lob:
+                        for check_ord in self.asks.lob[price][1]:
+                            if check_ord[3] == order.qid:
+                                sys.exit("QID still in the list, not supposed to happen - from ASK SIDE")
 
 
         else:
@@ -232,6 +240,20 @@ class Exchange(Orderbook):
                 sys.exit("More than one opposite party - check for error before commenting out")
             return transaction_record, order_quantity
         else:
+            print("@@@@@ CAME HERE TO DELETE")
+            if order.ostyle == 'MKT':
+                # def del_order(self, time, order, verbose):
+                self.del_order(time,order,False)
+                print(self.asks.lob)
+                print(self.bids.lob)
+                for price in self.asks.lob:
+                    for check_ord in self.asks.lob[price][1]:
+                        if check_ord[3] == order.qid:
+                            sys.exit("QID still in the list, not supposed to happen - from ASK SIDE")
+                for price in self.bids.lob:
+                    for check_ord in self.bids.lob[price][1]:
+                        if check_ord[3] == order.qid:
+                            sys.exit("QID still in the list, not supposed to happen - from BID SIDE")
             return None, 0
 
     def tape_dump(self, fname, fmode, tmode):
