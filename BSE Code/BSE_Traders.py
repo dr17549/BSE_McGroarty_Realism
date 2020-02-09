@@ -81,9 +81,9 @@ class Trader:
                 transactionprice = trade['price']
                 # todo profit calculation is not correct since it doesn't take quantity into account
                 if self.orders[0].otype == 'Bid':
-                        profit = self.orders[0].price - transactionprice
+                        profit = self.orders[0].price - ( transactionprice * actual_quantity_traded)
                 else:
-                        profit = transactionprice - self.orders[0].price
+                        profit = ( transactionprice * actual_quantity_traded) - self.orders[0].price
                 self.balance += profit
                 self.n_trades += 1
                 self.profitpertime = self.balance/(time - self.birthtime)
@@ -767,6 +767,7 @@ class Mean_Reversion(Trader):
             if order != None:
                 order_submit.append(order)
         return order_submit, []
+
 
 class Noise_Trader(Trader):
     def __init__(self, ttype, tid, balance, time):

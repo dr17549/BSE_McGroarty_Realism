@@ -181,7 +181,7 @@ class Exchange(Orderbook):
                         order_quantity = original_quantity - remaining_quantity
                     # delete order just incase it's still there in the LOB
                     self.bids.book_del(order)
-                    print("************** CHECKED BID")
+                    print("************** CHECKED BID" + str(self.bids.lob) )
                     for price in self.bids.lob:
                         for check_ord in self.bids.lob[price][1]:
                             if check_ord[3] == order.qid:
@@ -203,7 +203,7 @@ class Exchange(Orderbook):
                         order_quantity = original_quantity - remaining_quantity
                     # delete order just incase it's still there
                     self.asks.book_del(order)
-                    print("************** CHECKED ASK")
+                    print("************** CHECKED ASK" + str(self.asks.lob))
                     for price in self.asks.lob:
                         for check_ord in self.asks.lob[price][1]:
                             if check_ord[3] == order.qid:

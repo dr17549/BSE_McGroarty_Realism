@@ -128,7 +128,8 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dum
 
 
                 # get a limit-order quote (or None) from a randomly chosen trader
-
+                # AGENT SELECTION
+                #__________________________________________________________________________________________
                 if switch == 0:
                         tid = list(traders.keys())[counter_b]
                         if counter_b == (len(traders)/2) - 1:
@@ -151,11 +152,9 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dum
                 #                                                                          exchange.publish_lob(time,
                 #                                                                                               lob_verbose))
                 # tid = list(traders.keys())[random.randint(0, len(traders) - 1)]
-                if inside_trade_verbose:
-                        print("[ CURRENT TRADER OBJECT ARRAY ORDER ]")
-                        for indv_o in traders[tid].orders:
-                                print(str(tid) + " : " + str(indv_o))
-                        print("[ ______________________ ]")
+                # __________________________________________________________________________________________
+
+
                 orders_from_agent, need_to_delete_orders = traders[tid].getorder(time, time_left, exchange.publish_lob(time, lob_verbose))
 
                 # need to delete orders before going further
@@ -166,7 +165,6 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dum
 
                         for to_be_del_orders in need_to_delete_orders:
                                 # print("BSE MAIN : DEL " + str(to_be_del_orders))
-
                                 exchange.del_order(time,to_be_del_orders,process_verbose)
 
                         # print("BSE MAIN : AFTER ------ CHECK DEL FUNCTION ")
@@ -175,9 +173,15 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dum
 
 
                 # if verbose: print('Trader Quote: %s' % (order))
-                for temp_ord in traders[tid].orders:
-                        if temp_ord not in orders_from_agent:
-                                traders[tid].orders.remove(temp_ord)
+                del_array = []
+                for temp_ord in range(len(traders[tid].orders)):
+                        if (traders[tid].orders[temp_ord] not in orders_from_agent) and (traders[tid].orders[temp_ord].qid > 0):
+                                del_array.append(temp_ord)
+
+                del_array.sort(reverse=True)
+                for i in del_array:
+                        del traders[tid].orders[i]
+
 
                 for order in orders_from_agent:
                         if order != None:
@@ -193,17 +197,68 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dum
                                         most_recent_order = 0
 
                                         if traders[temp_id].ttype not in mcg_names:
+
                                                 for iter_ord in traders[temp_id].orders:
                                                         if iter_ord.qid < 0 and iter_ord.time > most_recent_order:
                                                                 most_recent_order = iter_ord.time
 
-                                                index_del = []
+                                                del_array = []
                                                 for iter_ord in range(len(traders[temp_id].orders)):
                                                         if traders[temp_id].orders[iter_ord].time < most_recent_order:
-                                                                index_del.append(iter_ord)
-                                                for index in index_del:
-                                                        del(traders[temp_id].orders[index])
+                                                                del_array.append(iter_ord)
 
+                                                del_array.sort(reverse=True)
+                                                for i in del_array:
+                                                        del traders[temp_id].orders[i]
+
+                                        else:
+                                                for iter_ord in traders[temp_id].orders:
+                                                        if iter_ord.qid < 0 and iter_ord.time > most_recent_order:
+                                                                most_recent_order = iter_ord.time
+
+                                                del_array = []
+                                                for iter_ord in range(len(traders[temp_id].orders)):
+                                                        if traders[temp_id].orders[iter_ord].time < most_recent_order \
+                                                                and traders[temp_id].orders[iter_ord].qid < 0:
+                                                                        del_array.append(iter_ord)
+                                                del_array.sort(reverse=True)
+                                                for i in del_array:
+                                                        del traders[temp_id].orders[i]
+
+
+                                # check for orders inside the agent object
+                                # __________________________________________________________________________
+                                two_order_traders = ['MARKET_M', 'GVWY']
+                                no_order_traders = ['LIQ', 'MOMENTUM']
+                                for temp_id in list(traders.keys()):
+                                        if traders[temp_id].ttype in two_order_traders:
+                                                if len(traders[temp_id].orders) > 3:
+                                                        print("TYPE : " + str(traders[
+                                                                                      temp_id].ttype) + " ORDER N : " + str(
+                                                                len(traders[temp_id].orders)))
+                                                        for temp_ord in traders[temp_id].orders:
+                                                                print(temp_ord)
+                                                        sys.exit(
+                                                                "Trader orders not equal as required amount ")
+                                        elif traders[temp_id].ttype in no_order_traders:
+                                                if len(traders[temp_id].orders) > 1:
+                                                        print("TYPE : " + str(traders[
+                                                                                      temp_id].ttype) + " ORDER N : " + str(
+                                                                len(traders[temp_id].orders)))
+                                                        for temp_ord in traders[temp_id].orders:
+                                                                print(temp_ord)
+                                                        sys.exit(
+                                                                "Trader orders not equal as required amount ")
+                                        else:
+                                                if len(traders[temp_id].orders) > 2:
+                                                        print("TYPE : " + str(traders[
+                                                                                      temp_id].ttype) + " ORDER N : " + str(
+                                                                len(traders[temp_id].orders)))
+                                                        for temp_ord in traders[temp_id].orders:
+                                                                print(temp_ord)
+                                                        sys.exit(
+                                                                "Trader orders not equal as required amount ")
+                                # __________________________________________________________________________
 
 
                                 # now we kill the orders that is less than the current one
@@ -261,6 +316,14 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dum
                                                         print(str(trade['party2']) + " : " + str(indv_o))
                                                 print("_____________________________________________ ")
                                         if dump_each_trade: trade_stats(sess_id, traders, tdump, time, exchange.publish_lob(time, lob_verbose))
+
+                                        # check if the MKT order is still in the agent personal order, if yes, must be removed
+                                        if order.ostyle == 'MKT':
+                                                for temp_ord in traders[tid].orders:
+                                                        if temp_ord.qid == order.qid:
+                                                                traders[tid].orders.remove(temp_ord)
+
+
                                 # if there is no trade
                                 else:
                                         if order.ostyle == 'LIM':
@@ -276,6 +339,7 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dum
                                         traders[t].respond(time, lob, trade, respond_verbose)
 
                 # check if the exchange matches the trader personal orders
+                # __________________________________________________________________________
                 # check both lob and orders in the exchange
                 # orderlist.append([order.time, order.qty, order.tid, order.qid])
 
@@ -308,6 +372,10 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dum
                                         for p_order in traders[order[2]].orders:
                                                 print(p_order)
                                         sys.exit("Order in the trader and order in the LOB does not match")
+                # __________________________________________________________________________
+
+
+
 
                 time = time + timestep
 
@@ -411,11 +479,11 @@ if __name__ == "__main__":
         min_n = 1
 
         trialnumber = 1
-        buyers_spec = [('LIQ', 10), ('GVWY', 3),
-                                                       ('SMB', 0), ('MOMENTUM', 0), ('MARKET_M', 0),('MEAN_R', 0)]
+        buyers_spec = [('LIQ', 10), ('GVWY', 2),
+                                                       ('SMB', 0), ('MOMENTUM', 0), ('MARKET_M', 10),('MEAN_R', 0)]
         # sellers_spec = buyers_spec
-        sellers_spec = [('LIQ', 10), ('GVWY', 3),
-                                                       ('SMS', 0), ('MOMENTUM', 0), ('MARKET_M', 0),('MEAN_R', 0)]
+        sellers_spec = [('LIQ' , 10), ('GVWY', 2),
+                                                       ('SMS', 0), ('MOMENTUM', 0), ('MARKET_M', 10),('MEAN_R', 0)]
         traders_spec = {'sellers':sellers_spec, 'buyers':buyers_spec}
 
 

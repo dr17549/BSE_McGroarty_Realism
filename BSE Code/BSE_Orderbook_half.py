@@ -219,10 +219,16 @@ class Orderbook_half:
 
                         # decrease quantity in the right element
                         first_order_quantity = self.lob[price][0]
+                        trade_quantity_before_dec = 0
                         for agent_submitted in range(len(self.lob[price][1])):
                                 if self.lob[price][1][agent_submitted][2] == best_price_counterparty:
+                                        trade_quantity_before_dec = self.lob[price][1][agent_submitted][1]
                                         if self.lob[price][1][agent_submitted][1] == 1:
-                                                del(self.lob[price][1][agent_submitted])
+                                                print("DEC ORDER DEL " + str(self.lob[price][1][agent_submitted]))
+                                                print("BEFORE : " + str(self.lob))
+                                                self.lob[price][1].remove(self.lob[price][1][agent_submitted])
+                                                print("AFTER : " + str(self.lob))
+                                                # del(self.lob[price][1][agent_submitted])
                                                 self.n_orders -= 1
                                                 break
                                         else:
@@ -232,19 +238,20 @@ class Orderbook_half:
 
                                         # element_in_lobprice = agent_submitted
 
-                        #decrement price overall
+                        #decrement quantity overall
                         self.lob[price][0] -= 1
                         # print(" > 1 $$$$$$ DEC -- ORDER N : " + str(self.n_orders))
-
                         # Decrement the overall quantity - not correct !!
-                        if first_order_quantity > 1:
+                        if trade_quantity_before_dec > 1:
                                 self.orders[best_price_counterparty].qty -= 1
                         else:
-                                del(self.orders[price])
+                                del(self.orders[best_price_counterparty])
+
                 else:
                         print("Do nothing because there is nothing at the other side? ")
                         sys.exit("IT SHOULD DO THIS IN ANYCASE in DEC ORDER ")
                 self.build_lob()
+
 
                 if True:
                         print("DEC ORDER _ UPDATED LOB :" + str(self.lob))
