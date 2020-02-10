@@ -60,6 +60,7 @@ class Orderbook_half:
                 if len(self.lob) > 0 :
                         if self.booktype == 'Bid':
                                 self.best_price = self.lob_anon[-1][0]
+                                print("INSIDE : " + str(self.best_price))
                         else :
                                 self.best_price = self.lob_anon[0][0]
                         self.best_tid = self.lob[self.best_price][1][0][2]
@@ -81,7 +82,7 @@ class Orderbook_half:
                 self.orders[order.tid] = order
                 self.n_orders = len(self.orders)
                 self.build_lob()
-                print(self.n_orders)
+                # print(self.n_orders)
                 # print("ADDED LOB" + str(self.lob))
 
                 #print('book_add < %s %s' % (order, self.orders))

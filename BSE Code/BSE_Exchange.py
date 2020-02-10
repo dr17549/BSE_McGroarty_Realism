@@ -221,6 +221,7 @@ class Exchange(Orderbook):
         # NB at this point we have deleted the order from the exchange's records
         # but the two traders concerned still have to be notified
         if verbose: print('counterparty %s' % counterparty)
+        transaction_record = []
         if len(counterparty) > 0:
             # process the trade
             for num in range(len(counterparty)):

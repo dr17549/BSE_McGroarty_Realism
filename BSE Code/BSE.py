@@ -112,7 +112,6 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dum
                 trade = None
 
                 # this one gives assignments to traders
-                # todo there is a problem here with the McGroarty Agents assignments
                 [pending_cust_orders, kills] = customer_orders(time, last_update, traders, trader_stats,
                                                  order_schedule, pending_cust_orders, orders_verbose)
 
@@ -270,7 +269,6 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dum
                                 if inside_trade_verbose:
                                         print("^^^^^^ ORDER FROM AGENT " + str(order))
 
-                                #todo PROBLEM with orders from agent
                                 for trader_id in list(traders.keys()):
                                         qid = []
                                         for a_ord in traders[trader_id].orders:
@@ -480,10 +478,10 @@ if __name__ == "__main__":
 
         trialnumber = 1
         buyers_spec = [('LIQ', 10), ('GVWY', 2),
-                                                       ('SMB', 0), ('MOMENTUM', 0), ('MARKET_M', 10),('MEAN_R', 0)]
+                                                       ('SMB', 0), ('MOMENTUM', 10), ('MARKET_M', 10),('MEAN_R', 0)]
         # sellers_spec = buyers_spec
         sellers_spec = [('LIQ' , 10), ('GVWY', 2),
-                                                       ('SMS', 0), ('MOMENTUM', 0), ('MARKET_M', 10),('MEAN_R', 0)]
+                                                       ('SMS', 0), ('MOMENTUM', 10), ('MARKET_M', 10),('MEAN_R', 0)]
         traders_spec = {'sellers':sellers_spec, 'buyers':buyers_spec}
 
 

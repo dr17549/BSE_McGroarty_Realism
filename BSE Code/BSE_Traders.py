@@ -878,10 +878,6 @@ class Simple_Buyer(Trader):
                                 time, -1,'LIM')
             self.counter += 1
             self.lastquote = order
-            # print("ORDERS" + str(self.orders))
-            # if self.counter > 2 and len(self.orders) > 1:
-        #     delete_orders.append(self.orders[0])
-        #     print("GOING TO BE DEL : " + str(self.orders[0]))
             print("BUYER : " + str(order))
             list_order.append(order)
             # list_order.append(order)
