@@ -93,7 +93,7 @@ class Exchange(Orderbook):
         # print("ASK : ")
         # for num in self.asks.orders:
         #     print(str(self.asks.orders[num]) + ',')
-
+        print_check = False
         oprice = order.price
         counterparty = []
         order_quantity = order.qty
@@ -111,14 +111,14 @@ class Exchange(Orderbook):
         best_bid_tid = self.bids.best_tid
 
         # if order is a Limit Order
+        if True:
+            print("______________________________LOB BOOK ______________________________________")
+            print("ASK SIDE : ")
+            print(self.asks.lob)
+            print("BID SIDE : ")
+            print(self.bids.lob)
+            print("______________________________END BOOK ______________________________________")
 
-        print("______________________________LOB BOOK ______________________________________")
-        print("ASK SIDE : ")
-        print(self.asks.lob)
-        print("BID SIDE : ")
-        print(self.bids.lob)
-        print("______________________________END BOOK ______________________________________")
-        print_check = True
 
 
         if order.ostyle == 'LIM':
@@ -241,7 +241,8 @@ class Exchange(Orderbook):
                 sys.exit("More than one opposite party - check for error before commenting out")
             return transaction_record, order_quantity
         else:
-            print("@@@@@ CAME HERE TO DELETE")
+            if print_check:
+                print("@@@@@ CAME HERE TO DELETE")
             if order.ostyle == 'MKT':
                 # def del_order(self, time, order, verbose):
                 self.del_order(time,order,False)

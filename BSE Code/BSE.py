@@ -129,248 +129,259 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dum
                 # get a limit-order quote (or None) from a randomly chosen trader
                 # AGENT SELECTION
                 #__________________________________________________________________________________________
-                if switch == 0:
-                        tid = list(traders.keys())[counter_b]
-                        if counter_b == (len(traders)/2) - 1:
-                                counter_b = 0
-                        else:
-                                counter_b += 1
-                        switch = 1
-                        # print("Seller's turn : " + str(tid))
-                else:
-                        tid = list(traders.keys())[counter_s]
-                        if counter_s == (len(traders)) - 1:
-                                counter_s = len(traders) / 2
-                        else:
-                                counter_s += 1
-                        switch = 0
-
-                # trader selection of McGroarty's
-                # for tid in list(traders.keys()):
-                #         orders_from_agent, need_to_delete_orders = traders[tid].getorder(time, time_left,
-                #                                                                          exchange.publish_lob(time,
-                #                                                                                               lob_verbose))
-                # tid = list(traders.keys())[random.randint(0, len(traders) - 1)]
+                # if switch == 0:
+                #         tid = list(traders.keys())[counter_b]
+                #         if counter_b == (len(traders)/2) - 1:
+                #                 counter_b = 0
+                #         else:
+                #                 counter_b += 1
+                #         switch = 1
+                #         # print("Seller's turn : " + str(tid))
+                # else:
+                #         tid = list(traders.keys())[counter_s]
+                #         if counter_s == (len(traders)) - 1:
+                #                 counter_s = len(traders) / 2
+                #         else:
+                #                 counter_s += 1
+                #         switch = 0
                 # __________________________________________________________________________________________
 
 
-                orders_from_agent, need_to_delete_orders = traders[tid].getorder(time, time_left, exchange.publish_lob(time, lob_verbose))
-
-                # need to delete orders before going further
-                if len(need_to_delete_orders) > 0:
-                        # print("BSE MAIN : BEFORE +++++++++++ CHECK DEL FUNCTION ")
-                        # for odr in exchange.bids.orders:
-                                # print("ORDER before : " + str(odr))
-
-                        for to_be_del_orders in need_to_delete_orders:
-                                # print("BSE MAIN : DEL " + str(to_be_del_orders))
-                                exchange.del_order(time,to_be_del_orders,process_verbose)
-
-                        # print("BSE MAIN : AFTER ------ CHECK DEL FUNCTION ")
-                        # for odr in exchange.bids.orders:
-                                # print(odr)
+                for tid in list(traders.keys()):
+                        # print("=============================== " + str(tid) + "'s Turn ================================")
+                        # trader selection of McGroarty's
+                        # for tid in list(traders.keys()):
+                        #         orders_from_agent, need_to_delete_orders = traders[tid].getorder(time, time_left,
+                        #                                                                          exchange.publish_lob(time,
+                        #                                                                                               lob_verbose))
+                        # tid = list(traders.keys())[random.randint(0, len(traders) - 1)]
+                        # __________________________________________________________________________________________
 
 
-                # if verbose: print('Trader Quote: %s' % (order))
-                del_array = []
-                for temp_ord in range(len(traders[tid].orders)):
-                        if (traders[tid].orders[temp_ord] not in orders_from_agent) and (traders[tid].orders[temp_ord].qid > 0):
-                                del_array.append(temp_ord)
+                        orders_from_agent, need_to_delete_orders = traders[tid].getorder(time, time_left, exchange.publish_lob(time, lob_verbose))
 
-                del_array.sort(reverse=True)
-                for i in del_array:
-                        del traders[tid].orders[i]
+                        # need to delete orders before going further
+                        if len(need_to_delete_orders) > 0:
+                                # print("BSE MAIN : BEFORE +++++++++++ CHECK DEL FUNCTION ")
+                                # for odr in exchange.bids.orders:
+                                        # print("ORDER before : " + str(odr))
+
+                                for to_be_del_orders in need_to_delete_orders:
+                                        # print("BSE MAIN : DEL " + str(to_be_del_orders))
+                                        exchange.del_order(time,to_be_del_orders,process_verbose)
+
+                                # print("BSE MAIN : AFTER ------ CHECK DEL FUNCTION ")
+                                # for odr in exchange.bids.orders:
+                                        # print(odr)
 
 
-                for order in orders_from_agent:
-                        if order != None:
+                        # if verbose: print('Trader Quote: %s' % (order))
+                        if len(orders_from_agent) > 0:
+                                # ('CURRENT ORDER ' + str(orders_from_agent[0]))
+                                # print("BEFORE DEL ___ TRADER CHECK : " + str(tid))
+                                # for temp_ord in traders[tid].orders:
+                                #         print(temp_ord)
+                                del_array = []
+                                del_in_exchange = []
+                                for temp_ord in range(len(traders[tid].orders)):
+                                        if (traders[tid].orders[temp_ord].qid >= 0):
+                                                del_array.append(temp_ord)
+                                                del_in_exchange.append(traders[tid].orders[temp_ord])
 
-                                # if there is an order, you should first
-                                # 1. delete all old records
-                                #       a. delete in the personal self.orders
-                                #       b. delete in the exchange lob
-                                # 2. add new order -> which is done in the section below
+                                del_array.sort(reverse=True)
+                                for i in del_array:
+                                        del traders[tid].orders[i]
+                                for d_ord in del_in_exchange:
+                                        exchange.del_order(time,d_ord,True)
+                        for order in orders_from_agent:
+                                if order != None:
 
-                                # kill orders that is less than the current assignment (customer order)
-                                for temp_id in list(traders.keys()):
-                                        most_recent_order = 0
+                                        # if there is an order, you should first
+                                        # 1. delete all old records
+                                        #       a. delete in the personal self.orders
+                                        #       b. delete in the exchange lob
+                                        # 2. add new order -> which is done in the section below
 
-                                        if traders[temp_id].ttype not in mcg_names:
+                                        # kill orders that is less than the current assignment (customer order)
+                                        for temp_id in list(traders.keys()):
+                                                most_recent_order = 0
 
-                                                for iter_ord in traders[temp_id].orders:
-                                                        if iter_ord.qid < 0 and iter_ord.time > most_recent_order:
-                                                                most_recent_order = iter_ord.time
+                                                if traders[temp_id].ttype not in mcg_names:
 
-                                                del_array = []
-                                                for iter_ord in range(len(traders[temp_id].orders)):
-                                                        if traders[temp_id].orders[iter_ord].time < most_recent_order:
-                                                                del_array.append(iter_ord)
+                                                        for iter_ord in traders[temp_id].orders:
+                                                                if iter_ord.qid < 0 and iter_ord.time > most_recent_order:
+                                                                        most_recent_order = iter_ord.time
 
-                                                del_array.sort(reverse=True)
-                                                for i in del_array:
-                                                        del traders[temp_id].orders[i]
-
-                                        else:
-                                                for iter_ord in traders[temp_id].orders:
-                                                        if iter_ord.qid < 0 and iter_ord.time > most_recent_order:
-                                                                most_recent_order = iter_ord.time
-
-                                                del_array = []
-                                                for iter_ord in range(len(traders[temp_id].orders)):
-                                                        if traders[temp_id].orders[iter_ord].time < most_recent_order \
-                                                                and traders[temp_id].orders[iter_ord].qid < 0:
+                                                        del_array = []
+                                                        for iter_ord in range(len(traders[temp_id].orders)):
+                                                                if traders[temp_id].orders[iter_ord].time < most_recent_order:
                                                                         del_array.append(iter_ord)
-                                                del_array.sort(reverse=True)
-                                                for i in del_array:
-                                                        del traders[temp_id].orders[i]
 
+                                                        del_array.sort(reverse=True)
+                                                        for i in del_array:
+                                                                del traders[temp_id].orders[i]
 
-                                # check for orders inside the agent object
-                                # __________________________________________________________________________
-                                two_order_traders = ['MARKET_M', 'GVWY']
-                                no_order_traders = ['LIQ', 'MOMENTUM']
-                                for temp_id in list(traders.keys()):
-                                        if traders[temp_id].ttype in two_order_traders:
-                                                if len(traders[temp_id].orders) > 3:
-                                                        print("TYPE : " + str(traders[
-                                                                                      temp_id].ttype) + " ORDER N : " + str(
-                                                                len(traders[temp_id].orders)))
-                                                        for temp_ord in traders[temp_id].orders:
-                                                                print(temp_ord)
-                                                        sys.exit(
-                                                                "Trader orders not equal as required amount ")
-                                        elif traders[temp_id].ttype in no_order_traders:
-                                                if len(traders[temp_id].orders) > 1:
-                                                        print("TYPE : " + str(traders[
-                                                                                      temp_id].ttype) + " ORDER N : " + str(
-                                                                len(traders[temp_id].orders)))
-                                                        for temp_ord in traders[temp_id].orders:
-                                                                print(temp_ord)
-                                                        sys.exit(
-                                                                "Trader orders not equal as required amount ")
-                                        else:
-                                                if len(traders[temp_id].orders) > 2:
-                                                        print("TYPE : " + str(traders[
-                                                                                      temp_id].ttype) + " ORDER N : " + str(
-                                                                len(traders[temp_id].orders)))
-                                                        for temp_ord in traders[temp_id].orders:
-                                                                print(temp_ord)
-                                                        sys.exit(
-                                                                "Trader orders not equal as required amount ")
-                                # __________________________________________________________________________
-
-
-                                # now we kill the orders that is less than the current one
-                                # send order to exchange
-                                if order.qty < 1:
-                                        sys.exit("Order Quantity cannot be 0")
-                                traders[tid].n_quotes = 1
-
-                                if inside_trade_verbose:
-                                        print("^^^^^^ ORDER FROM AGENT " + str(order))
-
-                                for trader_id in list(traders.keys()):
-                                        qid = []
-                                        for a_ord in traders[trader_id].orders:
-                                                if a_ord.qid not in qid:
-                                                        qid.append(a_ord.qid)
                                                 else:
-                                                        print("TRADER TYPE : " + str(traders[trader_id].ttype))
-                                                        for p_order in traders[trader_id].orders:
-                                                                print(p_order)
-                                                        sys.exit("Double QID in the same list")
-                                trade, actual_quantity_traded = exchange.process_order2(time, order, process_verbose,list(traders.keys()), traders)
+                                                        for iter_ord in traders[temp_id].orders:
+                                                                if iter_ord.qid < 0 and iter_ord.time > most_recent_order:
+                                                                        most_recent_order = iter_ord.time
+
+                                                        del_array = []
+                                                        for iter_ord in range(len(traders[temp_id].orders)):
+                                                                if traders[temp_id].orders[iter_ord].time < most_recent_order \
+                                                                        and traders[temp_id].orders[iter_ord].qid < 0:
+                                                                                del_array.append(iter_ord)
+                                                        del_array.sort(reverse=True)
+                                                        for i in del_array:
+                                                                del traders[temp_id].orders[i]
 
 
-                                if trade != None:
-                                        traders[tid].add_order(order, False)
+                                        # check for orders inside the agent object
+                                        # __________________________________________________________________________
+                                        two_order_traders = ['MARKET_M', 'GVWY']
+                                        no_order_traders = ['LIQ', 'MOMENTUM']
+                                        for temp_id in list(traders.keys()):
+                                                if traders[temp_id].ttype in two_order_traders:
+                                                        if len(traders[temp_id].orders) > 3:
+                                                                print("TYPE : " + str(traders[
+                                                                                              temp_id].ttype) + " ORDER N : " + str(
+                                                                        len(traders[temp_id].orders)))
+                                                                for temp_ord in traders[temp_id].orders:
+                                                                        print(temp_ord)
+                                                                sys.exit(
+                                                                        "Trader orders not equal as required amount ")
+                                                elif traders[temp_id].ttype in no_order_traders:
+                                                        if len(traders[temp_id].orders) > 1:
+                                                                print("TYPE : " + str(traders[
+                                                                                              temp_id].ttype) + " ORDER N : " + str(
+                                                                        len(traders[temp_id].orders)))
+                                                                for temp_ord in traders[temp_id].orders:
+                                                                        print(temp_ord)
+                                                                sys.exit(
+                                                                        "Trader orders not equal as required amount ")
+                                                else:
+                                                        if len(traders[temp_id].orders) > 2:
+                                                                print("TYPE : " + str(traders[
+                                                                                              temp_id].ttype) + " ORDER N : " + str(
+                                                                        len(traders[temp_id].orders)))
+                                                                for temp_ord in traders[temp_id].orders:
+                                                                        print(temp_ord)
+                                                                sys.exit(
+                                                                        "Trader orders not equal as required amount ")
+                                        # __________________________________________________________________________
+
+
+                                        # now we kill the orders that is less than the current one
+                                        # send order to exchange
+                                        if order.qty < 1:
+                                                sys.exit("Order Quantity cannot be 0")
+                                        traders[tid].n_quotes = 1
 
                                         if inside_trade_verbose:
-                                                print("^^^^^^ ORDER TRADED BETWEEN SUBMITTED : " + str(tid) + " CLIENT : " + str(trade['party2']) +
-                                                      " PRICE : " + str(trade['price']) + " Original QTY : " + str(order.qty))
+                                                print("^^^^^^ ORDER FROM AGENT " + str(order))
 
-                                        # trade occurred,
-                                        # so the counterparties update order lists and blotters
-
-                                        # traders[tid].orders.append(order)
-
-                                        if inside_trade_verbose:
-                                                print("___ TRADE FROM AGENTS ____ ")
-                                                for indv_o in traders[trade['party1']].orders:
-                                                        print(str(trade['party1']) + " : " + str(indv_o))
-                                                print(" ------------------------------------------------")
-                                                for indv_o in traders[trade['party2']].orders:
-                                                        print(str(trade['party2']) + " : " + str(indv_o))
-                                                print("_____________________________________________ ")
-
-                                        traders[trade['party1']].bookkeep(trade, order, bookkeep_verbose, time, actual_quantity_traded)
-                                        traders[trade['party2']].bookkeep(trade, order, bookkeep_verbose, time, actual_quantity_traded)
-
-                                        if inside_trade_verbose:
-                                                print("___ AFTER BOOK KEEP : TRADE FROM AGENTS ____ ")
-                                                for indv_o in traders[trade['party1']].orders:
-                                                        print(str(trade['party1']) + " : " + str(indv_o))
-                                                for indv_o in traders[trade['party2']].orders:
-                                                        print(str(trade['party2']) + " : " + str(indv_o))
-                                                print("_____________________________________________ ")
-                                        if dump_each_trade: trade_stats(sess_id, traders, tdump, time, exchange.publish_lob(time, lob_verbose))
-
-                                        # check if the MKT order is still in the agent personal order, if yes, must be removed
-                                        if order.ostyle == 'MKT':
-                                                for temp_ord in traders[tid].orders:
-                                                        if temp_ord.qid == order.qid:
-                                                                traders[tid].orders.remove(temp_ord)
+                                        for trader_id in list(traders.keys()):
+                                                qid = []
+                                                for a_ord in traders[trader_id].orders:
+                                                        if a_ord.qid not in qid:
+                                                                qid.append(a_ord.qid)
+                                                        else:
+                                                                print("TRADER TYPE : " + str(traders[trader_id].ttype))
+                                                                for p_order in traders[trader_id].orders:
+                                                                        print(p_order)
+                                                                sys.exit("Double QID in the same list")
+                                        trade, actual_quantity_traded = exchange.process_order2(time, order, process_verbose,list(traders.keys()), traders)
 
 
-                                # if there is no trade
-                                else:
-                                        if order.ostyle == 'LIM':
+                                        if trade != None:
                                                 traders[tid].add_order(order, False)
 
-                                # traders respond to whatever happened
-                                lob = exchange.publish_lob(time, lob_verbose)
+                                                if inside_trade_verbose:
+                                                        print("^^^^^^ ORDER TRADED BETWEEN SUBMITTED : " + str(tid) + " CLIENT : " + str(trade['party2']) +
+                                                              " PRICE : " + str(trade['price']) + " Original QTY : " + str(order.qty))
 
-                                for t in traders:
-                                        # NB respond just updates trader's internal variables
-                                        # doesn't alter the LOB, so processing each trader in
-                                        # sequence (rather than random/shuffle) isn't a problem
-                                        traders[t].respond(time, lob, trade, respond_verbose)
+                                                # trade occurred,
+                                                # so the counterparties update order lists and blotters
 
-                # check if the exchange matches the trader personal orders
-                # __________________________________________________________________________
-                # check both lob and orders in the exchange
-                # orderlist.append([order.time, order.qty, order.tid, order.qid])
+                                                # traders[tid].orders.append(order)
 
-                for price in exchange.bids.lob:
+                                                if inside_trade_verbose:
+                                                        print("___ TRADE FROM AGENTS ____ ")
+                                                        for indv_o in traders[trade['party1']].orders:
+                                                                print(str(trade['party1']) + " : " + str(indv_o))
+                                                        print(" ------------------------------------------------")
+                                                        for indv_o in traders[trade['party2']].orders:
+                                                                print(str(trade['party2']) + " : " + str(indv_o))
+                                                        print("_____________________________________________ ")
 
-                        for order in exchange.bids.lob[price][1]:
-                                found = False
+                                                traders[trade['party1']].bookkeep(trade, order, bookkeep_verbose, time, actual_quantity_traded)
+                                                traders[trade['party2']].bookkeep(trade, order, bookkeep_verbose, time, actual_quantity_traded)
 
-                                for personal_order in traders[order[2]].orders:
-                                        if personal_order.qty == order[1] and price == personal_order.price and order[0] == personal_order.time:
-                                                found = True
-                                if not found:
-                                        print("NOT FOUND TID  : " + str(order) + " - TYPE :" + str(traders[order[2]].ttype))
-                                        print(exchange.bids.lob[price])
-                                        for p_order in traders[order[2]].orders:
-                                                print(p_order)
-                                        sys.exit("Order in the trader and order in the LOB does not match")
+                                                if inside_trade_verbose:
+                                                        print("___ AFTER BOOK KEEP : TRADE FROM AGENTS ____ ")
+                                                        for indv_o in traders[trade['party1']].orders:
+                                                                print(str(trade['party1']) + " : " + str(indv_o))
+                                                        for indv_o in traders[trade['party2']].orders:
+                                                                print(str(trade['party2']) + " : " + str(indv_o))
+                                                        print("_____________________________________________ ")
+                                                if dump_each_trade: trade_stats(sess_id, traders, tdump, time, exchange.publish_lob(time, lob_verbose))
+
+                                                # check if the MKT order is still in the agent personal order, if yes, must be removed
+                                                if order.ostyle == 'MKT':
+                                                        for temp_ord in traders[tid].orders:
+                                                                if temp_ord.qid == order.qid:
+                                                                        traders[tid].orders.remove(temp_ord)
 
 
-                for price in exchange.asks.lob:
-                        for order in exchange.asks.lob[price][1]:
-                                found = False
+                                        # if there is no trade
+                                        else:
+                                                if order.ostyle == 'LIM':
+                                                        traders[tid].add_order(order, False)
 
-                                for personal_order in traders[order[2]].orders:
-                                        if personal_order.qty == order[1] and price == personal_order.price and order[0] == personal_order.time:
-                                                found = True
-                                if not found:
-                                        print("NOT FOUND TID  : " + str(order) + str(traders[order[2]].ttype))
-                                        print(exchange.asks.lob[price])
-                                        for p_order in traders[order[2]].orders:
-                                                print(p_order)
-                                        sys.exit("Order in the trader and order in the LOB does not match")
-                # __________________________________________________________________________
+                                        # traders respond to whatever happened
+                                        lob = exchange.publish_lob(time, lob_verbose)
+
+                                        for t in traders:
+                                                # NB respond just updates trader's internal variables
+                                                # doesn't alter the LOB, so processing each trader in
+                                                # sequence (rather than random/shuffle) isn't a problem
+                                                traders[t].respond(time, lob, trade, respond_verbose)
+
+                        # check if the exchange matches the trader personal orders
+                        # __________________________________________________________________________
+                        # check both lob and orders in the exchange
+                        # orderlist.append([order.time, order.qty, order.tid, order.qid])
+
+                        for price in exchange.bids.lob:
+
+                                for order in exchange.bids.lob[price][1]:
+                                        found = False
+
+                                        for personal_order in traders[order[2]].orders:
+                                                if personal_order.qty == order[1] and price == personal_order.price and order[0] == personal_order.time:
+                                                        found = True
+                                        if not found:
+                                                print("NOT FOUND TID  : " + str(order) + " - TYPE :" + str(traders[order[2]].ttype))
+                                                print(exchange.bids.lob[price])
+                                                for p_order in traders[order[2]].orders:
+                                                        print(p_order)
+                                                sys.exit("Order in the trader and order in the LOB does not match")
+
+
+                        for price in exchange.asks.lob:
+                                for order in exchange.asks.lob[price][1]:
+                                        found = False
+
+                                        for personal_order in traders[order[2]].orders:
+                                                if personal_order.qty == order[1] and price == personal_order.price and order[0] == personal_order.time:
+                                                        found = True
+                                        if not found:
+                                                print("NOT FOUND TID  : " + str(order) + str(traders[order[2]].ttype))
+                                                print(exchange.asks.lob[price])
+                                                for p_order in traders[order[2]].orders:
+                                                        print(p_order)
+                                                sys.exit("Order in the trader and order in the LOB does not match")
+                        # __________________________________________________________________________
 
 
 
@@ -397,7 +408,7 @@ if __name__ == "__main__":
         # set up parameters for the session
 
         start_time = 0.0
-        end_time = 1000.0
+        end_time = 200.0
         duration = end_time - start_time
 
 
@@ -477,11 +488,11 @@ if __name__ == "__main__":
         min_n = 1
 
         trialnumber = 1
-        buyers_spec = [('LIQ', 10), ('GVWY', 2),
-                                                       ('SMB', 0), ('MOMENTUM', 10), ('MARKET_M', 10),('MEAN_R', 0)]
+        buyers_spec = [('LIQ', 0), ('GVWY', 0),
+                                                       ('SMB', 0), ('MOMENTUM', 0), ('MARKET_M', 0),('MEAN_R', 0),('NOISE', 3)]
         # sellers_spec = buyers_spec
-        sellers_spec = [('LIQ' , 10), ('GVWY', 2),
-                                                       ('SMS', 0), ('MOMENTUM', 10), ('MARKET_M', 10),('MEAN_R', 0)]
+        sellers_spec = [('LIQ', 0), ('GVWY', 0),
+                                                       ('SMS', 0), ('MOMENTUM', 0), ('MARKET_M', 0),('MEAN_R', 0),('NOISE', 3)]
         traders_spec = {'sellers':sellers_spec, 'buyers':buyers_spec}
 
 
