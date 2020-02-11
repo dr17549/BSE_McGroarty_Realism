@@ -60,7 +60,6 @@ class Orderbook_half:
                 if len(self.lob) > 0 :
                         if self.booktype == 'Bid':
                                 self.best_price = self.lob_anon[-1][0]
-                                print("INSIDE : " + str(self.best_price))
                         else :
                                 self.best_price = self.lob_anon[0][0]
                         self.best_tid = self.lob[self.best_price][1][0][2]
@@ -121,7 +120,6 @@ class Orderbook_half:
                         del(self.lob[self.best_price])
                         del(self.orders[best_price_counterparty])
                         self.n_orders = self.n_orders - 1
-                        print("ORDER N : " + str(self.n_orders))
                         print(self.lob)
                         if self.n_orders > 0:
                                 if self.booktype == 'Bid':
@@ -148,14 +146,12 @@ class Orderbook_half:
 
                         # update the bid list: counterparty's bid has been deleted
                         # del (self.orders[best_price_counterparty])
-                        print("ORDER N : " + str(self.n_orders))
                         if first_order_quantity > 1:
                                 self.orders[best_price_counterparty].qty -= 1
                         else:
                                 del (self.orders[best_price_counterparty])
                 else:
-                        print("BEST PRICE QTY : " + str(best_price_qty))
-                        print("Do nothing because there is nothing at the other side? ")
+                        print("No order at the other side of the BOOK.")
                 self.build_lob()
                 if True:
                         print("UPDATED LOB :" + str(self.lob))
@@ -164,10 +160,9 @@ class Orderbook_half:
                 return best_price_counterparty
 
         def decrement_order(self,price,tid):
-                verbose = True
+                verbose = False
                 if verbose:
                         print("DEC ORDER _ BEFORE LOB :" + str(self.lob))
-                verbose = False
 
                 # check to avoid deleting NULL entries
                 if(self.lob[price] == None):
@@ -225,10 +220,12 @@ class Orderbook_half:
                                 if self.lob[price][1][agent_submitted][2] == best_price_counterparty:
                                         trade_quantity_before_dec = self.lob[price][1][agent_submitted][1]
                                         if self.lob[price][1][agent_submitted][1] == 1:
-                                                print("DEC ORDER DEL " + str(self.lob[price][1][agent_submitted]))
-                                                print("BEFORE : " + str(self.lob))
+                                                if verbose:
+                                                        print("DEC ORDER DEL " + str(self.lob[price][1][agent_submitted]))
+                                                        print("BEFORE : " + str(self.lob))
                                                 self.lob[price][1].remove(self.lob[price][1][agent_submitted])
-                                                print("AFTER : " + str(self.lob))
+                                                if verbose:
+                                                        print("AFTER : " + str(self.lob))
                                                 # del(self.lob[price][1][agent_submitted])
                                                 self.n_orders -= 1
                                                 break
@@ -249,12 +246,11 @@ class Orderbook_half:
                                 del(self.orders[best_price_counterparty])
 
                 else:
-                        print("Do nothing because there is nothing at the other side? ")
-                        sys.exit("IT SHOULD DO THIS IN ANYCASE in DEC ORDER ")
+                        sys.exit("DEC ORDER cannot find the specified order in the LOB ")
                 self.build_lob()
 
 
-                if True:
+                if verbose:
                         print("DEC ORDER _ UPDATED LOB :" + str(self.lob))
                 return best_price_counterparty
 

@@ -488,11 +488,11 @@ if __name__ == "__main__":
         min_n = 1
 
         trialnumber = 1
-        buyers_spec = [('LIQ', 0), ('GVWY', 0),
-                                                       ('SMB', 0), ('MOMENTUM', 0), ('MARKET_M', 0),('MEAN_R', 0),('NOISE', 3)]
+        buyers_spec = [('LIQ', 3), ('GVWY', 0),
+                                                       ('SMB', 0), ('MOMENTUM', 3), ('MARKET_M', 3),('MEAN_R', 3),('NOISE', 2)]
         # sellers_spec = buyers_spec
-        sellers_spec = [('LIQ', 0), ('GVWY', 0),
-                                                       ('SMS', 0), ('MOMENTUM', 0), ('MARKET_M', 0),('MEAN_R', 0),('NOISE', 3)]
+        sellers_spec = [('LIQ', 3), ('GVWY', 0),
+                                                       ('SMS', 0), ('MOMENTUM', 3), ('MARKET_M', 3),('MEAN_R', 3),('NOISE', 2)]
         traders_spec = {'sellers':sellers_spec, 'buyers':buyers_spec}
 
 

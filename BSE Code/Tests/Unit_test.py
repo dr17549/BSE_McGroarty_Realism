@@ -60,6 +60,17 @@ class Test_Orderbook_half_methods(unittest.TestCase):
         bookhalf.book_add(order01)
         bookhalf.book_add(order02)
         bookhalf.delete_best()
+        self.assertEqual(bookhalf.lob, collections.OrderedDict([(5, [1, [[1, 1, 'T02', 0]]]), (3, [2, [[1, 2, 'T01', 0]]])]))
+        self.assertEqual(bookhalf.n_orders, 2)
+
+    def test_delete_best_bid(self):
+        bookhalf = Orderbook_half('Bid', 100)
+        order01 = Order('T01', 'Bid', 3, 1, 1, 0, 'LIM')
+        order02 = Order('T02', 'Bid', 5, 3, 1, 0, 'LIM')
+        bookhalf.book_add(order01)
+        bookhalf.book_add(order02)
+        bookhalf.delete_best()
+        self.assertEqual(bookhalf.lob, collections.OrderedDict([(5, [2, [[1, 2, 'T02', 0]]]), (3, [1, [[1, 1, 'T01', 0]]])]))
         self.assertEqual(bookhalf.n_orders, 2)
 
     def test_delete_best_03(self):
@@ -78,21 +89,22 @@ class Test_Orderbook_half_methods(unittest.TestCase):
         bookhalf.book_add(order01)
         bookhalf.book_add(order02)
         bookhalf.decrement_order(3,'T01')
+        self.assertEqual(bookhalf.lob,collections.OrderedDict([(5, [1, [[1, 1, 'T02', 0]]]), (3, [1, [[1, 1, 'T01', 0]]])]))
         self.assertEqual(bookhalf.n_orders, 2)
 
     def test_dec_order_02(self):
         bookhalf = Orderbook_half('asks', 100)
-        order01 = Order('T01', 'ASK', 3, 1, 1, 0, 'LIM')
-        order02 = Order('T02', 'ASK', 5, 1, 1, 0, 'LIM')
+        order01 = Order('T01', 'Ask', 3, 1, 1, 0, 'LIM')
+        order02 = Order('T02', 'Ask', 5, 1, 1, 0, 'LIM')
         bookhalf.book_add(order01)
         bookhalf.book_add(order02)
         bookhalf.decrement_order(3,'T01')
         self.assertEqual(bookhalf.n_orders, 1)
 
     def test_dec_order_03(self):
-        bookhalf = Orderbook_half('asks', 100)
-        order01 = Order('T01', 'ASK', 3, 2, 1, 0, 'LIM')
-        order02 = Order('T02', 'ASK', 5, 1, 1, 0, 'LIM')
+        bookhalf = Orderbook_half('bids', 100)
+        order01 = Order('T01', 'Bid', 3, 2, 1, 0, 'LIM')
+        order02 = Order('T02', 'Bid', 5, 1, 1, 0, 'LIM')
         bookhalf.book_add(order01)
         bookhalf.book_add(order02)
         bookhalf.decrement_order(3,'T01')
@@ -199,6 +211,32 @@ class Test_Exchange_methods(unittest.TestCase):
         self.assertEqual(exchange.asks.n_orders, 0)
         self.assertEqual(exchange.bids.n_orders, 0)
 
+    def test_process_MKT03(self):
+        exchange = Exchange()
+        exchange.asks = Orderbook_half('asks', 1)
+        exchange.bids = Orderbook_half('bids', 100)
+        exchange = Exchange()
+        order01 = Order('T01', 'Ask', 3, 2, 1, 0, 'LIM')
+        order03 = Order('T02', 'Bid', 5, 2, 1, 0, 'MKT')
+        exchange.asks.book_add(order01)
+        transac, qty = exchange.process_order2(2, order03, False, [], [])
+        self.assertEqual(qty, 2)
+        self.assertEqual(exchange.asks.n_orders, 0)
+        self.assertEqual(exchange.bids.n_orders, 0)
+
+    def test_process_MKT04(self):
+        exchange = Exchange()
+        exchange.asks = Orderbook_half('asks', 1)
+        exchange.bids = Orderbook_half('bids', 100)
+        exchange = Exchange()
+        order01 = Order('T01', 'Ask', 3, 3, 1, 0, 'LIM')
+        order03 = Order('T02', 'Bid', 5, 2, 1, 0, 'MKT')
+        exchange.asks.book_add(order01)
+        transac, qty = exchange.process_order2(2, order03, False, [], [])
+        self.assertEqual(qty, 2)
+        self.assertEqual(exchange.asks.n_orders, 1)
+        self.assertEqual(exchange.bids.n_orders, 0)
+
     def test_add_and_del_order(self):
         exchange = Exchange()
         exchange.asks = Orderbook_half('asks', 1)
@@ -228,7 +266,8 @@ class Test_Exchange_methods(unittest.TestCase):
         exchange.bids = Orderbook_half('bids', 100)
         exchange = Exchange()
         order01 = Order('T01', 'Bid', 3, 1, 1, 0, 'MKT')
-        exchange.process_order2(3, order01, False, [], [])
+        transac, qty = exchange.process_order2(3, order01, False, [], [])
+        self.assertEqual(qty,0)
         self.assertEqual(exchange.bids.lob, collections.OrderedDict())
         self.assertEqual(exchange.asks.lob, collections.OrderedDict())
 
@@ -240,11 +279,12 @@ class Test_Exchange_methods(unittest.TestCase):
         order00 = Order('T01', 'Ask', 10, 1, 1, 0, 'LIM')
         order01 = Order('T01', 'Bid', 3, 1, 1, 0, 'MKT')
         exchange.add_order(order00, False)
-        exchange.process_order2(3,order01,False,[],[])
+        transac, qty = exchange.process_order2(3,order01,False,[],[])
+        self.assertEqual(qty, 1)
         self.assertEqual(exchange.bids.lob, collections.OrderedDict())
         self.assertEqual(exchange.asks.lob, collections.OrderedDict())
 
-    def test_empty_po_02(self):
+    def test_empty_po_025(self):
         exchange = Exchange()
         exchange.asks = Orderbook_half('asks', 1)
         exchange.bids = Orderbook_half('bids', 100)

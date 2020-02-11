@@ -111,7 +111,7 @@ class Exchange(Orderbook):
         best_bid_tid = self.bids.best_tid
 
         # if order is a Limit Order
-        if True:
+        if print_check:
             print("______________________________LOB BOOK ______________________________________")
             print("ASK SIDE : ")
             print(self.asks.lob)
@@ -163,25 +163,26 @@ class Exchange(Orderbook):
         elif order.ostyle == 'MKT':
             remaining_quantity = 0
             original_quantity = order.qty
-            if verbose:
+            if print_check:
                 print("&&&& Process MKT Order")
             if order.otype == 'Bid':
                 if self.asks.n_orders > 0:
                     remaining_quantity = order.qty
                     while self.asks.n_orders > 0 and remaining_quantity > 0:
                         counterparty = self.append_counter_party(counterparty, best_ask_tid, best_ask)
-                        print("__ ASK SIDE __ : ")
+                        # print("__ ASK SIDE __ : ")
                         self.asks.delete_best()
-                        print("BID -- LOB N ORDERS : " + str(self.asks.n_orders))
-                        print("__BID SIDE __ : ")
+                        # print("BID -- LOB N ORDERS : " + str(self.asks.n_orders))
+                        # print("__BID SIDE __ : ")
                         self.bids.decrement_order(oprice, order.tid)
-                        print("BID -DEC- LOB N ORDERS : " + str(self.bids.n_orders))
+                        # print("BID -DEC- LOB N ORDERS : " + str(self.bids.n_orders))
                         # self.bids.delete_best()
                         remaining_quantity = remaining_quantity - 1
                         order_quantity = original_quantity - remaining_quantity
                     # delete order just incase it's still there in the LOB
                     self.bids.book_del(order)
-                    print("************** CHECKED BID" + str(self.bids.lob) )
+                    if print_check:
+                        print("************** CHECKED BID" + str(self.bids.lob) )
                     for price in self.bids.lob:
                         for check_ord in self.bids.lob[price][1]:
                             if check_ord[3] == order.qid:
@@ -192,18 +193,20 @@ class Exchange(Orderbook):
                     while self.bids.n_orders > 0 and remaining_quantity > 0:
                         # counterparty.append([best_bid_tid,best_bid])
                         counterparty = self.append_counter_party(counterparty, best_bid_tid, best_bid)
-                        print("__BID SIDE __ : ")
+                        # print("__BID SIDE __ : ")
                         self.bids.delete_best()
-                        print("++ ASK -- BID SIDE ORDERS : " + str(self.bids.n_orders))
-                        print("__ ASK SIDE __ : ")
+                        # print("++ ASK -- BID SIDE ORDERS : " + str(self.bids.n_orders))
+                        # print("__ ASK SIDE __ : ")
                         self.asks.decrement_order(oprice, order.tid)
-                        print("++ ASK -DEC- BID SIDE ORDERS : " + str(self.asks.n_orders))
-                        print("LOB N ORDERS : " + str(self.bids.n_orders))
+                        # print("++ ASK -DEC- BID SIDE ORDERS : " + str(self.asks.n_orders))
+                        # print("LOB N ORDERS : " + str(self.bids.n_orders))
                         remaining_quantity = remaining_quantity - 1
                         order_quantity = original_quantity - remaining_quantity
                     # delete order just incase it's still there
                     self.asks.book_del(order)
-                    print("************** CHECKED ASK" + str(self.asks.lob))
+
+                    if print_check:
+                        print("************** CHECKED ASK" + str(self.asks.lob))
                     for price in self.asks.lob:
                         for check_ord in self.asks.lob[price][1]:
                             if check_ord[3] == order.qid:
