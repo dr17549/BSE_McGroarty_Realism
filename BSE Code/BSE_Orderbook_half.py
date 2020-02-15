@@ -20,6 +20,7 @@ class Orderbook_half:
                 # summary stats
                 self.best_price = None
                 self.best_tid = None
+                self.best_qty = 0
                 self.worstprice = worstprice
                 self.n_orders = 0  # how many orders?
                 self.lob_depth = 0  # how many different prices on lob?
@@ -60,12 +61,15 @@ class Orderbook_half:
                 if len(self.lob) > 0 :
                         if self.booktype == 'Bid':
                                 self.best_price = self.lob_anon[-1][0]
+                                self.best_qty = self.lob_anon[-1][1]
                         else :
                                 self.best_price = self.lob_anon[0][0]
+                                self.best_qty = self.lob_anon[0][1]
                         self.best_tid = self.lob[self.best_price][1][0][2]
                 else :
                         self.best_price = None
                         self.best_tid = None
+                        self.best_qty = 0
 
                 if lob_verbose : print self.lob
 
@@ -81,6 +85,7 @@ class Orderbook_half:
                 self.orders[order.tid] = order
                 self.n_orders = len(self.orders)
                 self.build_lob()
+
                 # print(self.n_orders)
                 # print("ADDED LOB" + str(self.lob))
 
@@ -107,7 +112,6 @@ class Orderbook_half:
                 verbose = True
                 if verbose:
                         print("BEFORE LOB :" + str(self.lob))
-                verbose = False
                 # delete order: when the best bid/ask has been hit, delete it from the book
                 # the TraderID of the deleted order is return-value, as counterparty to the trade
                 best_price_orders = self.lob[self.best_price]
@@ -120,16 +124,17 @@ class Orderbook_half:
                         del(self.lob[self.best_price])
                         del(self.orders[best_price_counterparty])
                         self.n_orders = self.n_orders - 1
-                        print(self.lob)
                         if self.n_orders > 0:
                                 if self.booktype == 'Bid':
                                         self.best_price = max(self.lob.keys())
                                 else:
                                         self.best_price = min(self.lob.keys())
+                                self.best_qty = self.lob[self.best_price][0]
                                 self.lob_depth = len(self.lob.keys())
                         else:
                                 self.best_price = self.worstprice
                                 self.lob_depth = 0
+                                self.best_qty = 0
                 elif best_price_qty > 1:
                         # print("DELTED SMTH FOR SURE")
                         # best_bid_qty>1 so the order decrements the quantity of the best bid
@@ -137,6 +142,7 @@ class Orderbook_half:
                         # self.lob[self.best_price] = [best_price_qty - 1, best_price_orders[1][:1]
                         lob_list = best_price_orders[1]
                         first_order_quantity = best_price_orders[1][0][1]
+                        self.best_qty -= 1
                         if first_order_quantity > 1:
                                 lob_list[0][1] = first_order_quantity - 1
                                 self.lob[self.best_price] = [best_price_qty - 1, lob_list]
@@ -160,7 +166,7 @@ class Orderbook_half:
                 return best_price_counterparty
 
         def decrement_order(self,price,tid):
-                verbose = False
+                verbose = True
                 if verbose:
                         print("DEC ORDER _ BEFORE LOB :" + str(self.lob))
 
@@ -203,6 +209,7 @@ class Orderbook_half:
                                         self.best_price = max(self.lob.keys())
                                 else:
                                         self.best_price = min(self.lob.keys())
+                                self.best_qty = self.lob[self.best_price][0]
                                 self.lob_depth = len(self.lob.keys())
                         else:
                                 self.best_price = self.worstprice
@@ -238,6 +245,7 @@ class Orderbook_half:
 
                         #decrement quantity overall
                         self.lob[price][0] -= 1
+                        self.best_qty -= 1
                         # print(" > 1 $$$$$$ DEC -- ORDER N : " + str(self.n_orders))
                         # Decrement the overall quantity - not correct !!
                         if trade_quantity_before_dec > 1:

@@ -32,8 +32,9 @@ class Test_Orderbook_half_methods(unittest.TestCase):
 
     def test_add(self):
         bookhalf = Orderbook_half('Bid', 100)
-        order01 = Order('T01', 'Bid', 1, 1, 1, 0, 'LIM')
+        order01 = Order('T01', 'Bid', 1, 5, 1, 0, 'LIM')
         bookhalf.book_add(order01)
+        self.assertEqual(bookhalf.best_qty, 5)
         self.assertEqual(bookhalf.orders['T01'], order01)
 
     def test_delete(self):
@@ -41,6 +42,7 @@ class Test_Orderbook_half_methods(unittest.TestCase):
         order01 = Order('T01', 'Bid', 1, 1, 1, 0, 'LIM')
         bookhalf.book_add(order01)
         bookhalf.book_del(order01)
+        self.assertEqual(bookhalf.best_qty, 0)
         self.assertEqual(bookhalf.n_orders, 0)
 
     # ORDER : def __init__(tid, otype, price, qty, time, qid, ostyle):
@@ -51,6 +53,7 @@ class Test_Orderbook_half_methods(unittest.TestCase):
         bookhalf.book_add(order01)
         bookhalf.book_add(order02)
         bookhalf.delete_best()
+        self.assertEqual(bookhalf.best_qty, 3)
         self.assertEqual(bookhalf.n_orders, 1)
 
     def test_delete_best_ask(self):
@@ -62,6 +65,8 @@ class Test_Orderbook_half_methods(unittest.TestCase):
         bookhalf.delete_best()
         self.assertEqual(bookhalf.lob, collections.OrderedDict([(5, [1, [[1, 1, 'T02', 0]]]), (3, [2, [[1, 2, 'T01', 0]]])]))
         self.assertEqual(bookhalf.n_orders, 2)
+        self.assertEqual(bookhalf.best_qty, 2)
+        self.assertEqual(bookhalf.best_price, 3)
 
     def test_delete_best_bid(self):
         bookhalf = Orderbook_half('Bid', 100)
@@ -71,6 +76,7 @@ class Test_Orderbook_half_methods(unittest.TestCase):
         bookhalf.book_add(order02)
         bookhalf.delete_best()
         self.assertEqual(bookhalf.lob, collections.OrderedDict([(5, [2, [[1, 2, 'T02', 0]]]), (3, [1, [[1, 1, 'T01', 0]]])]))
+        self.assertEqual(bookhalf.best_qty, 2)
         self.assertEqual(bookhalf.n_orders, 2)
 
     def test_delete_best_03(self):
@@ -80,6 +86,7 @@ class Test_Orderbook_half_methods(unittest.TestCase):
         bookhalf.book_add(order01)
         bookhalf.book_add(order02)
         bookhalf.delete_best()
+        self.assertEqual(bookhalf.best_qty, 1)
         self.assertEqual(bookhalf.n_orders, 1)
 
     def test_dec_order_01(self):
@@ -89,6 +96,7 @@ class Test_Orderbook_half_methods(unittest.TestCase):
         bookhalf.book_add(order01)
         bookhalf.book_add(order02)
         bookhalf.decrement_order(3,'T01')
+        self.assertEqual(bookhalf.best_qty, 1)
         self.assertEqual(bookhalf.lob,collections.OrderedDict([(5, [1, [[1, 1, 'T02', 0]]]), (3, [1, [[1, 1, 'T01', 0]]])]))
         self.assertEqual(bookhalf.n_orders, 2)
 
@@ -99,6 +107,7 @@ class Test_Orderbook_half_methods(unittest.TestCase):
         bookhalf.book_add(order01)
         bookhalf.book_add(order02)
         bookhalf.decrement_order(3,'T01')
+        self.assertEqual(bookhalf.best_qty, 1)
         self.assertEqual(bookhalf.n_orders, 1)
 
     def test_dec_order_03(self):
@@ -108,6 +117,7 @@ class Test_Orderbook_half_methods(unittest.TestCase):
         bookhalf.book_add(order01)
         bookhalf.book_add(order02)
         bookhalf.decrement_order(3,'T01')
+        self.assertEqual(bookhalf.best_qty, 1)
         self.assertEqual(collections.OrderedDict([(5, [1, [[1, 1, 'T02', 0]]]), (3, [1, [[1, 1, 'T01', 0]]])]), bookhalf.lob)
 
     def test_dec_order_04(self):
@@ -117,6 +127,7 @@ class Test_Orderbook_half_methods(unittest.TestCase):
         bookhalf.book_add(order01)
         bookhalf.book_add(order02)
         bookhalf.decrement_order(3,'T01')
+        self.assertEqual(bookhalf.best_qty, 1)
         self.assertEqual(collections.OrderedDict([(5, [1, [[1, 1, 'T02', 0]]])]),
                          bookhalf.lob)
 
@@ -131,20 +142,20 @@ class Test_Exchange_methods(unittest.TestCase):
         exchange = Exchange()
         exchange.asks = Orderbook_half('asks', 1)
         exchange.bids = Orderbook_half('bids', 100)
-        exchange = Exchange()
         order01 = Order('T01', 'Ask', 3, 1, 1, 0, 'LIM')
         order02 = Order('T02', 'Bid', 3, 2, 1, 0, 'LIM')
         exchange.asks.book_add(order01)
         self.assertEqual(exchange.asks.n_orders, 1)
         exchange.process_order2(2,order02,False,[],[])
         self.assertEqual(exchange.asks.n_orders, 0)
+        self.assertEqual(exchange.bids.best_qty, 1)
+        self.assertEqual(exchange.asks.best_qty, 0)
         self.assertEqual(exchange.bids.n_orders, 1)
 
     def test_process02(self):
         exchange = Exchange()
         exchange.asks = Orderbook_half('asks', 1)
         exchange.bids = Orderbook_half('bids', 100)
-        exchange = Exchange()
         order01 = Order('T01', 'Ask', 3, 1, 1, 0, 'LIM')
         order02 = Order('T03', 'Ask', 5, 1, 1, 0, 'LIM')
         order03 = Order('T02', 'Bid', 3, 1, 1, 0, 'LIM')
@@ -154,12 +165,13 @@ class Test_Exchange_methods(unittest.TestCase):
         exchange.process_order2(2, order03, False, [], [])
         self.assertEqual(exchange.asks.n_orders, 1)
         self.assertEqual(exchange.bids.n_orders, 0)
+        self.assertEqual(exchange.bids.best_qty, 0)
+        self.assertEqual(exchange.asks.best_qty, 1)
 
     def test_process03(self):
         exchange = Exchange()
         exchange.asks = Orderbook_half('asks', 1)
         exchange.bids = Orderbook_half('bids', 100)
-        exchange = Exchange()
         order01 = Order('T01', 'Ask', 3, 1, 1, 0, 'LIM')
         order02 = Order('T03', 'Ask', 5, 1, 1, 0, 'LIM')
         order03 = Order('T02', 'Bid', 3, 2, 1, 0, 'LIM')
@@ -169,12 +181,13 @@ class Test_Exchange_methods(unittest.TestCase):
         exchange.process_order2(2, order03, False, [], [])
         self.assertEqual(exchange.asks.n_orders, 0)
         self.assertEqual(exchange.bids.n_orders, 0)
+        self.assertEqual(exchange.bids.best_qty, 0)
+        self.assertEqual(exchange.asks.best_qty, 0)
 
     def test_process04(self):
         exchange = Exchange()
         exchange.asks = Orderbook_half('asks', 1)
         exchange.bids = Orderbook_half('bids', 100)
-        exchange = Exchange()
         order01 = Order('T01', 'Ask', 3, 1, 1, 0, 'LIM')
         order02 = Order('T03', 'Ask', 5, 1, 1, 0, 'LIM')
         order03 = Order('T02', 'Bid', 3, 1, 1, 0, 'LIM')
@@ -184,12 +197,13 @@ class Test_Exchange_methods(unittest.TestCase):
         exchange.process_order2(2, order03, False, [], [])
         self.assertEqual(exchange.asks.n_orders, 1)
         self.assertEqual(exchange.bids.n_orders, 0)
+        self.assertEqual(exchange.bids.best_qty, 0)
+        self.assertEqual(exchange.asks.best_qty, 1)
 
     def test_process_MKT01(self):
         exchange = Exchange()
         exchange.asks = Orderbook_half('asks', 1)
         exchange.bids = Orderbook_half('bids', 100)
-        exchange = Exchange()
         order01 = Order('T01', 'Ask', 3, 1, 1, 0, 'LIM')
         order03 = Order('T02', 'Bid', 5, 2, 1, 0, 'MKT')
         exchange.asks.book_add(order01)
@@ -197,38 +211,43 @@ class Test_Exchange_methods(unittest.TestCase):
         exchange.process_order2(2, order03, False, [], [])
         self.assertEqual(exchange.asks.n_orders, 0)
         self.assertEqual(exchange.bids.n_orders, 0)
+        self.assertEqual(exchange.bids.best_qty, 0)
+        self.assertEqual(exchange.asks.best_qty, 0)
 
     def test_process_MKT02(self):
         exchange = Exchange()
         exchange.asks = Orderbook_half('asks', 1)
         exchange.bids = Orderbook_half('bids', 100)
-        exchange = Exchange()
         order01 = Order('T01', 'Ask', 3, 1, 1, 0, 'LIM')
         order03 = Order('T02', 'Bid', 5, 2, 1, 0, 'MKT')
         exchange.asks.book_add(order01)
         self.assertEqual(exchange.asks.n_orders, 1)
+        self.assertEqual(exchange.asks.best_qty, 1)
         exchange.process_order2(2, order03, False, [], [])
         self.assertEqual(exchange.asks.n_orders, 0)
         self.assertEqual(exchange.bids.n_orders, 0)
+        self.assertEqual(exchange.bids.best_qty, 0)
+        self.assertEqual(exchange.asks.best_qty, 0)
 
     def test_process_MKT03(self):
         exchange = Exchange()
         exchange.asks = Orderbook_half('asks', 1)
         exchange.bids = Orderbook_half('bids', 100)
-        exchange = Exchange()
         order01 = Order('T01', 'Ask', 3, 2, 1, 0, 'LIM')
         order03 = Order('T02', 'Bid', 5, 2, 1, 0, 'MKT')
         exchange.asks.book_add(order01)
+        self.assertEqual(exchange.asks.best_qty, 2)
         transac, qty = exchange.process_order2(2, order03, False, [], [])
         self.assertEqual(qty, 2)
         self.assertEqual(exchange.asks.n_orders, 0)
         self.assertEqual(exchange.bids.n_orders, 0)
+        self.assertEqual(exchange.bids.best_qty, 0)
+        self.assertEqual(exchange.asks.best_qty, 0)
 
     def test_process_MKT04(self):
         exchange = Exchange()
         exchange.asks = Orderbook_half('asks', 1)
         exchange.bids = Orderbook_half('bids', 100)
-        exchange = Exchange()
         order01 = Order('T01', 'Ask', 3, 3, 1, 0, 'LIM')
         order03 = Order('T02', 'Bid', 5, 2, 1, 0, 'MKT')
         exchange.asks.book_add(order01)
@@ -241,7 +260,6 @@ class Test_Exchange_methods(unittest.TestCase):
         exchange = Exchange()
         exchange.asks = Orderbook_half('asks', 1)
         exchange.bids = Orderbook_half('bids', 100)
-        exchange = Exchange()
         order01 = Order('T01', 'Ask', 3, 1, 1, 0, 'LIM')
         exchange.add_order(order01, False)
         self.assertEqual(exchange.asks.n_orders, 1)
@@ -253,7 +271,6 @@ class Test_Exchange_methods(unittest.TestCase):
         exchange = Exchange()
         exchange.asks = Orderbook_half('asks', 1)
         exchange.bids = Orderbook_half('bids', 100)
-        exchange = Exchange()
         order01 = Order('T01', 'Bid', 3, 1, 1, 0, 'LIM')
         exchange.add_order(order01, False)
         self.assertEqual(exchange.bids.n_orders, 1)
@@ -264,7 +281,6 @@ class Test_Exchange_methods(unittest.TestCase):
         exchange = Exchange()
         exchange.asks = Orderbook_half('asks', 1)
         exchange.bids = Orderbook_half('bids', 100)
-        exchange = Exchange()
         order01 = Order('T01', 'Bid', 3, 1, 1, 0, 'MKT')
         transac, qty = exchange.process_order2(3, order01, False, [], [])
         self.assertEqual(qty,0)
@@ -275,7 +291,6 @@ class Test_Exchange_methods(unittest.TestCase):
         exchange = Exchange()
         exchange.asks = Orderbook_half('asks', 1)
         exchange.bids = Orderbook_half('bids', 100)
-        exchange = Exchange()
         order00 = Order('T01', 'Ask', 10, 1, 1, 0, 'LIM')
         order01 = Order('T01', 'Bid', 3, 1, 1, 0, 'MKT')
         exchange.add_order(order00, False)
@@ -288,7 +303,6 @@ class Test_Exchange_methods(unittest.TestCase):
         exchange = Exchange()
         exchange.asks = Orderbook_half('asks', 1)
         exchange.bids = Orderbook_half('bids', 100)
-        exchange = Exchange()
         order00 = Order('T01', 'Ask', 10, 1, 1, 0, 'LIM')
         order01 = Order('T01', 'Bid', 3, 2, 1, 0, 'MKT')
         exchange.add_order(order00, False)
@@ -301,7 +315,6 @@ class Test_Exchange_methods(unittest.TestCase):
         exchange = Exchange()
         exchange.asks = Orderbook_half('asks', 1)
         exchange.bids = Orderbook_half('bids', 100)
-        exchange = Exchange()
         order01 = Order('T01', 'Bid', 3, 2, 1, 0, 'LIM')
         exchange.add_order(order01, False)
         exchange.process_order2(3,order01,False,[],[])
@@ -312,7 +325,6 @@ class Test_Exchange_methods(unittest.TestCase):
         exchange = Exchange()
         exchange.asks = Orderbook_half('asks', 1)
         exchange.bids = Orderbook_half('bids', 100)
-        exchange = Exchange()
         order00 = Order('T02', 'Ask', 3, 1, 1, 0, 'LIM')
         order01 = Order('T01', 'Bid', 3, 1, 1, 0, 'LIM')
         #def __init__(tid, otype, price, qty, time, qid, ostyle):
@@ -327,7 +339,6 @@ class Test_Exchange_methods(unittest.TestCase):
         exchange = Exchange()
         exchange.asks = Orderbook_half('asks', 1)
         exchange.bids = Orderbook_half('bids', 100)
-        exchange = Exchange()
         order00 = Order('T02', 'Ask', 3, 1, 1, 0, 'LIM')
         order01 = Order('T01', 'Bid', 3, 1, 1, 0, 'MKT')
         #def __init__(tid, otype, price, qty, time, qid, ostyle):
@@ -343,7 +354,6 @@ class Test_Exchange_methods(unittest.TestCase):
         exchange = Exchange()
         exchange.asks = Orderbook_half('asks', 1)
         exchange.bids = Orderbook_half('bids', 100)
-        exchange = Exchange()
         order00 = Order('T02', 'Ask', 3, 1, 1, 0, 'LIM')
         # more quantity in the MKT order
         order01 = Order('T01', 'Bid', 3, 2, 1, 0, 'MKT')
@@ -359,7 +369,6 @@ class Test_Exchange_methods(unittest.TestCase):
         exchange = Exchange()
         exchange.asks = Orderbook_half('asks', 1)
         exchange.bids = Orderbook_half('bids', 100)
-        exchange = Exchange()
         order00 = Order('T02', 'Ask', 3, 10, 1, 0, 'LIM')
         # more quantity in the MKT order
         order01 = Order('T01', 'Bid', 4, 1, 1, 0, 'MKT')

@@ -218,9 +218,10 @@ class Exchange(Orderbook):
             sys.exit('process_order() given neither Bid nor Ask')
 
         if True:
-            print("TRADE ORIGINAL :" + str(order.tid) + "  COUNTER PARTY of TRADE : " + str(counterparty))
+            print("TRADE ORIGINAL : " + str(order.tid) + "  COUNTER PARTY of TRADE : " + str(counterparty))
             if len(counterparty) > 0 :
                 print(" ****** ACTUAL QUANTITY PERFORMED : " + str(order_quantity))
+
         # NB at this point we have deleted the order from the exchange's records
         # but the two traders concerned still have to be notified
         if verbose: print('counterparty %s' % counterparty)
@@ -278,9 +279,11 @@ class Exchange(Orderbook):
         public_data['bids'] = {'best': self.bids.best_price,
                                'worst': self.bids.worstprice,
                                'n': self.bids.n_orders,
+                               'qty': self.asks.best_qty,
                                'lob': self.bids.lob_anon}
         public_data['asks'] = {'best': self.asks.best_price,
                                'worst': self.asks.worstprice,
+                               'qty': self.asks.best_qty,
                                'n': self.asks.n_orders,
                                'lob': self.asks.lob_anon}
         public_data['QID'] = self.quote_id
