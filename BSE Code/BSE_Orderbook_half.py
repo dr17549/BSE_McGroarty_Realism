@@ -71,7 +71,7 @@ class Orderbook_half:
                         self.best_tid = None
                         self.best_qty = 0
 
-                if lob_verbose : print self.lob
+                if lob_verbose : print(self.lob)
 
 
         def book_add(self, order):
@@ -110,6 +110,7 @@ class Orderbook_half:
 
         def delete_best(self):
                 verbose = True
+                del_in_trader = False
                 if verbose:
                         print("BEFORE LOB :" + str(self.lob))
                 # delete order: when the best bid/ask has been hit, delete it from the book
@@ -117,7 +118,10 @@ class Orderbook_half:
                 best_price_orders = self.lob[self.best_price]
                 best_price_qty = best_price_orders[0]
                 best_price_counterparty = best_price_orders[1][0][2]
+                order_del_qid = best_price_orders[1][0][3]
+                print("BEST PRICE QTY : " + str(best_price_qty))
                 if best_price_qty == 1:
+                        del_in_trader = True
                         # here the order deletes the best price
                         # print("from function : deletebest() : THE LOB :" + str(self.lob))
                         # print("BEST PRICE : " + str(self.best_price))
@@ -152,21 +156,29 @@ class Orderbook_half:
 
                         # update the bid list: counterparty's bid has been deleted
                         # del (self.orders[best_price_counterparty])
+
                         if first_order_quantity > 1:
-                                self.orders[best_price_counterparty].qty -= 1
+                                change_qty = self.orders[best_price_counterparty].qty
+                                self.orders[best_price_counterparty].qty = change_qty - 1
+
                         else:
+                                del_in_trader = True
                                 del (self.orders[best_price_counterparty])
+
                 else:
                         print("No order at the other side of the BOOK.")
+
                 self.build_lob()
                 if True:
                         print("UPDATED LOB :" + str(self.lob))
                         # for i in self.orders:
                         #         print("SELF.ORDERS : " + str(i) + " - " + str(self.orders[i]))
-                return best_price_counterparty
+                print("DEL - BEST : DEL IN TRADER : " + str(del_in_trader))
+                return best_price_counterparty, order_del_qid, del_in_trader
 
         def decrement_order(self,price,tid):
                 verbose = True
+                del_in_trader = False
                 if verbose:
                         print("DEC ORDER _ BEFORE LOB :" + str(self.lob))
 
@@ -196,10 +208,11 @@ class Orderbook_half:
                 best_price_qty = best_price_orders[0]
                 best_price_counterparty = tid
 
+
                 if best_price_qty == 1:
                         '''' This is the case where the quantity at that price is 1 as well as the number of
                         orders, so we just delete that price '''
-
+                        del_in_trader = True
                         del (self.lob[self.best_price])
                         del (self.orders[best_price_counterparty])
                         self.n_orders = self.n_orders - 1
@@ -249,18 +262,24 @@ class Orderbook_half:
                         # print(" > 1 $$$$$$ DEC -- ORDER N : " + str(self.n_orders))
                         # Decrement the overall quantity - not correct !!
                         if trade_quantity_before_dec > 1:
-                                self.orders[best_price_counterparty].qty -= 1
+                                # self.orders[best_price_counterparty].qty -= 1
+                                change_qty = self.orders[best_price_counterparty].qty
+                                self.orders[best_price_counterparty].qty = change_qty - 1
+
                         else:
+                                del_in_trader = True
                                 del(self.orders[best_price_counterparty])
+
 
                 else:
                         sys.exit("DEC ORDER cannot find the specified order in the LOB ")
-                self.build_lob()
 
+                self.build_lob()
 
                 if verbose:
                         print("DEC ORDER _ UPDATED LOB :" + str(self.lob))
-                return best_price_counterparty
+                print("DEC ORD : DEL IN TRADER : " + str(del_in_trader))
+                return del_in_trader
 
 # Orderbook for a single instrument: list of bids and list of asks
 

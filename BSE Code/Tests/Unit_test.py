@@ -16,15 +16,6 @@ class Test_Trader_Methods(unittest.TestCase):
         GVWY.add_order(order01,False)
         self.assertEqual(GVWY.orders[0], order01)
 
-    def test_delete(self):
-        GVWY = Trader_Giveaway('GVWY', 'T01', 0.00, 0)
-        order01 = Order('T01', 'Bid', 1, 1, 1, 0, 'LIM')
-        order02 = Order('T01', 'Ask', 2, 1, 1, 1, 'LIM')
-        GVWY.add_order(order01,False)
-        GVWY.add_order(order02, False)
-        GVWY.del_order(order01,1)
-        self.assertEqual(len(GVWY.orders), 1)
-
 class Test_Orderbook_half_methods(unittest.TestCase):
 
     def setUp(self):
@@ -48,8 +39,8 @@ class Test_Orderbook_half_methods(unittest.TestCase):
     # ORDER : def __init__(tid, otype, price, qty, time, qid, ostyle):
     def test_delete_best_method(self):
         bookhalf = Orderbook_half('Bid', 100)
-        order01 = Order('T01', 'Bid', 103, 3, 1, 0, 'LIM')
-        order02 = Order('T02', 'Bid', 105, 1, 1, 0, 'LIM')
+        order01 = Order('T01', 'Bid', 103, 3, 1, 70, 'LIM')
+        order02 = Order('T02', 'Bid', 105, 1, 1, 60, 'LIM')
         bookhalf.book_add(order01)
         bookhalf.book_add(order02)
         bookhalf.delete_best()

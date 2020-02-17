@@ -46,32 +46,32 @@ class Trader:
                 return response
 
 
-        def del_order(self, order, actual_quantity_traded):
+        def del_order(self, order_id, actual_quantity_traded):
                 verbose = False
                 if verbose:
                     print("&& ______ DEL FUNCTION CALLED")
                 for iter in range(len(self.orders)):
-                    if self.orders[iter].qid == order.qid and actual_quantity_traded == order.qty:
+                    if self.orders[iter].qid == order_id and actual_quantity_traded == self.orders[iter].qty and self.orders[iter].qty == 1:
                         if verbose:
-                            print("DEL_ORDER : deleting : " + str(self.orders[iter]) + " which matched : " + str(order))
+                            print("DEL_ORDER : deleting : " + str(self.orders[iter]) + " which matched : " + str(self.orders[iter]))
                         self.orders.pop(iter)
                         break
-                    elif self.orders[iter].qid == order.qid and actual_quantity_traded < order.qty:
-                        if True:
-                            print("DEL ORDER FROM " + str(self.orders[iter].qty) + " TO " + str(self.orders[iter].qty - actual_quantity_traded))
-
-                        self.orders[iter].qty = self.orders[iter].qty - actual_quantity_traded
-                        if True:
-
-                            print("@@ DEL_2ND_ORDER : change value of order as : " + str(self.orders[iter]) + " which matched : " + str(order))
-                        break
+                    # elif self.orders[iter].qid == order_id and actual_quantity_traded < self.orders[iter].qty:
+                    #     if True:
+                    #         print("DEL ORDER FROM " + str(self.orders[iter].qty) + " TO " + str(self.orders[iter].qty - actual_quantity_traded))
+                    #
+                    #     self.orders[iter].qty = self.orders[iter].qty - actual_quantity_traded
+                    #     if True:
+                    #
+                    #         print("@@ DEL_2ND_ORDER : change value of order as : " + str(self.orders[iter]) + " which matched : " + str(self.orders[iter]))
+                    #     break
                 # this cannot happen because it is simply not possible
                 if len(self.orders) == 0:
                     print("ERROR : deleting only entry left ")
                     sys.exit(1)
 
 
-        def bookkeep(self, trade, order, verbose, time, actual_quantity_traded):
+        def bookkeep(self, trade, order, verbose, time, actual_quantity_traded, del_ord = False):
 
                 print_check = True
                 outstr=""
@@ -97,8 +97,14 @@ class Trader:
                 if verbose: print('%s profit=%d balance=%d profit/time=%d' % (outstr, profit, self.balance, self.profitpertime))
 
                 # todo does this assume that the order is a just an order, no quantity?
-                # if actual_quantity_traded == 1:
-                #     self.del_order(order, actual_quantity_traded)  # delete the order
+
+                if self.tid == trade['party1'] and del_ord:
+                    print(" TRADER - " + str(self.tid) + " GOING TO DEL : " + str(trade['op_order_qid']) + " BOOLEAN : " + str(del_ord))
+                    self.del_order(trade['op_order_qid'], actual_quantity_traded)  # delete the order
+                else:
+                    if del_ord:
+                        print(" TRADER - " + str(self.tid) + " GOING TO DEL : " + str(order.qid) +  " BOOLEAN : " + str(del_ord))
+                        self.del_order(order.qid, actual_quantity_traded)
 
 
         # specify how trader responds to events in the market
@@ -484,9 +490,10 @@ class Market_Maker(Trader):
             # todo cancel any existing order
             # todo check if order is live or not
             # cancel one of them by using del_exch_order(self, oid, verbose) or del_cust_order
-            if len(self.orders) > 1:
+            if len(self.live_orders) > 1:
                 for orders in self.live_orders[0:len(self.live_orders)]:
                     delete.append(orders)
+                    # self.orders.remove(orders)
             #reset the live order array
             self.live_orders = []
 
@@ -767,6 +774,7 @@ class Mean_Reversion(Trader):
                     order_submit.append(order)
                     print("_______ MEAN_R _______ submits : " + str(order))
                     return order_submit, []
+                    self.lastquote = order
 
         return order_submit, []
 

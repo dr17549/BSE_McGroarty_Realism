@@ -109,6 +109,10 @@ class Exchange(Orderbook):
         best_ask_tid = self.asks.best_tid
         best_bid = self.bids.best_price
         best_bid_tid = self.bids.best_tid
+        cp = 0
+        cp_order_qid = 0
+        party_del_in_trader = False
+        cp_del_in_trader = False
 
         # if order is a Limit Order
         if print_check:
@@ -118,7 +122,6 @@ class Exchange(Orderbook):
             print("BID SIDE : ")
             print(self.bids.lob)
             print("______________________________END BOOK ______________________________________")
-
 
 
         if order.ostyle == 'LIM':
@@ -134,13 +137,17 @@ class Exchange(Orderbook):
                     while remaining_quantity > 0 and self.asks.n_orders > 0:
                         counterparty = self.append_counter_party(counterparty, best_ask_tid, best_ask)
                         if print_check:
-                            print(" ___ DELETE BEST ASK : ")
-                        self.asks.delete_best()
-                        if print_check:
                             print(" ___ DELETE BEST BID : ")
-                        self.bids.decrement_order(oprice, order.tid)
+                        party_del_in_trader = self.bids.decrement_order(oprice, order.tid)
+
+                        if print_check:
+                            print(" ___ DELETE BEST ASK : ")
+                        cp, cp_order_qid, cp_del_in_trader = self.asks.delete_best()
+
+
                         remaining_quantity = remaining_quantity - 1
                         order_quantity = original_quantity - remaining_quantity
+
             else:
                 # if False:
                 #     print("ASK : Best bid : " + str(best_ask) + " <= " + str(best_bid) + " Orders : " + str(self.bids.n_orders > 0))
@@ -152,10 +159,11 @@ class Exchange(Orderbook):
                         counterparty = self.append_counter_party(counterparty, best_bid_tid, best_bid)
                         if print_check:
                             print(" ___ DELETE BEST ASK : ")
-                        self.asks.decrement_order(oprice, order.tid)
+                        party_del_in_trader = self.asks.decrement_order(oprice, order.tid)
                         if print_check:
                             print(" ___ DELETE BEST BID : ")
-                        self.bids.delete_best()
+                        cp, cp_order_qid, cp_del_in_trader = self.bids.delete_best()
+
                         remaining_quantity = remaining_quantity - 1
                         order_quantity = original_quantity - remaining_quantity
 
@@ -171,10 +179,10 @@ class Exchange(Orderbook):
                     while self.asks.n_orders > 0 and remaining_quantity > 0:
                         counterparty = self.append_counter_party(counterparty, best_ask_tid, best_ask)
                         # print("__ ASK SIDE __ : ")
-                        self.asks.delete_best()
+                        cp, cp_order_qid, cp_del_in_trader = self.asks.delete_best()
                         # print("BID -- LOB N ORDERS : " + str(self.asks.n_orders))
                         # print("__BID SIDE __ : ")
-                        self.bids.decrement_order(oprice, order.tid)
+                        party_del_in_trader = self.bids.decrement_order(oprice, order.tid)
                         # print("BID -DEC- LOB N ORDERS : " + str(self.bids.n_orders))
                         # self.bids.delete_best()
                         remaining_quantity = remaining_quantity - 1
@@ -194,10 +202,10 @@ class Exchange(Orderbook):
                         # counterparty.append([best_bid_tid,best_bid])
                         counterparty = self.append_counter_party(counterparty, best_bid_tid, best_bid)
                         # print("__BID SIDE __ : ")
-                        self.bids.delete_best()
+                        cp, cp_order_qid,cp_del_in_trader = self.bids.delete_best()
                         # print("++ ASK -- BID SIDE ORDERS : " + str(self.bids.n_orders))
                         # print("__ ASK SIDE __ : ")
-                        self.asks.decrement_order(oprice, order.tid)
+                        party_del_in_trader = self.asks.decrement_order(oprice, order.tid)
                         # print("++ ASK -DEC- BID SIDE ORDERS : " + str(self.asks.n_orders))
                         # print("LOB N ORDERS : " + str(self.bids.n_orders))
                         remaining_quantity = remaining_quantity - 1
@@ -222,6 +230,7 @@ class Exchange(Orderbook):
             if len(counterparty) > 0 :
                 print(" ****** ACTUAL QUANTITY PERFORMED : " + str(order_quantity))
 
+
         # NB at this point we have deleted the order from the exchange's records
         # but the two traders concerned still have to be notified
         if verbose: print('counterparty %s' % counterparty)
@@ -235,7 +244,10 @@ class Exchange(Orderbook):
                                       'price': counterparty[num][1],
                                       'party1': counterparty[num][0],
                                       'party2': order.tid,
-                                      'qty': counterparty[num][2]
+                                      'op_order_qid': cp_order_qid,
+                                      'qty': counterparty[num][2],
+                                      'del_party1': cp_del_in_trader,
+                                      'del_party2': party_del_in_trader
                                       }
                 self.tape.append(transaction_record)
             if len(counterparty) > 1:

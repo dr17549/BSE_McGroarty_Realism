@@ -195,7 +195,9 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dum
                                         exchange.del_order(time,d_ord,True)
                         for order in orders_from_agent:
                                 if order != None:
-
+                                        print(" ------------------------------------------------")
+                                        print(" ------------------------------------------------")
+                                        print("___ ORD FROM AGENT " + str(order))
                                         # if there is an order, you should first
                                         # 1. delete all old records
                                         #       a. delete in the personal self.orders
@@ -290,6 +292,7 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dum
                                                                 for p_order in traders[trader_id].orders:
                                                                         print(p_order)
                                                                 sys.exit("Double QID in the same list")
+
                                         trade, actual_quantity_traded = exchange.process_order2(time, order, process_verbose,list(traders.keys()), traders)
 
 
@@ -300,13 +303,8 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dum
                                                         print("^^^^^^ ORDER TRADED BETWEEN SUBMITTED : " + str(tid) + " CLIENT : " + str(trade['party2']) +
                                                               " PRICE : " + str(trade['price']) + " Original QTY : " + str(order.qty))
 
-                                                # trade occurred,
-                                                # so the counterparties update order lists and blotters
-
-                                                # traders[tid].orders.append(order)
-
-                                                if inside_trade_verbose:
-                                                        print("___ TRADE FROM AGENTS ____ ")
+                                                if True:
+                                                        print("___ BEFORE BOOK KEEP : TRADE FROM AGENTS ____ ")
                                                         for indv_o in traders[trade['party1']].orders:
                                                                 print(str(trade['party1']) + " : " + str(indv_o))
                                                         print(" ------------------------------------------------")
@@ -314,13 +312,17 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dum
                                                                 print(str(trade['party2']) + " : " + str(indv_o))
                                                         print("_____________________________________________ ")
 
-                                                traders[trade['party1']].bookkeep(trade, order, bookkeep_verbose, time, actual_quantity_traded)
-                                                traders[trade['party2']].bookkeep(trade, order, bookkeep_verbose, time, actual_quantity_traded)
+                                                print("TRADE TID " + str(trade['party2']) + " DEL ORD ? : " + str(trade['del_party2']) )
+                                                print("TRADE TID " + str(trade['party1']) + " DEL ORD ? : " + str(
+                                                        trade['del_party1']))
+                                                traders[trade['party1']].bookkeep(trade, order, bookkeep_verbose, time, actual_quantity_traded,trade['del_party1'])
+                                                traders[trade['party2']].bookkeep(trade, order, bookkeep_verbose, time, actual_quantity_traded,trade['del_party2'])
 
-                                                if inside_trade_verbose:
+                                                if True:
                                                         print("___ AFTER BOOK KEEP : TRADE FROM AGENTS ____ ")
                                                         for indv_o in traders[trade['party1']].orders:
                                                                 print(str(trade['party1']) + " : " + str(indv_o))
+                                                        print(" ------------------------------------------------")
                                                         for indv_o in traders[trade['party2']].orders:
                                                                 print(str(trade['party2']) + " : " + str(indv_o))
                                                         print("_____________________________________________ ")
@@ -361,8 +363,9 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dum
                                                 if personal_order.qty == order[1] and price == personal_order.price and order[0] == personal_order.time:
                                                         found = True
                                         if not found:
-                                                print("NOT FOUND TID  : " + str(order) + " - TYPE :" + str(traders[order[2]].ttype))
+                                                print("ORDER IN LOB : NOT FOUND TID  : " + str(order) + " - TYPE :" + str(traders[order[2]].ttype))
                                                 print(exchange.bids.lob[price])
+                                                print("_______________________")
                                                 for p_order in traders[order[2]].orders:
                                                         print(p_order)
                                                 sys.exit("Order in the trader and order in the LOB does not match")
@@ -376,12 +379,38 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dum
                                                 if personal_order.qty == order[1] and price == personal_order.price and order[0] == personal_order.time:
                                                         found = True
                                         if not found:
-                                                print("NOT FOUND TID  : " + str(order) + str(traders[order[2]].ttype))
+                                                print("ORD IN LOB : NOT FOUND TID  : " + str(order) + str(traders[order[2]].ttype))
                                                 print(exchange.asks.lob[price])
+                                                print("_______________________")
                                                 for p_order in traders[order[2]].orders:
                                                         print(p_order)
                                                 sys.exit("Order in the trader and order in the LOB does not match")
                         # __________________________________________________________________________
+
+                        # for temp_id in list(traders.keys()):
+                        #         for temp_ord in traders[temp_id].orders:
+                        #                 if temp_ord.qid > 0:
+                        #                         found = False
+                        #                         if temp_ord.otype == 'Bid':
+                        #                                 ord_check_book = exchange.bids.lob
+                        #                         else:
+                        #                                 ord_check_book = exchange.asks.lob
+                        #
+                        #                         if temp_ord.price not in ord_check_book:
+                        #                                 print("TEMPORD : " + str(temp_ord))
+                        #                                 print("LOB : " + str(ord_check_book))
+                        #                                 sys.exit("PRICE is not in the lob")
+                        #                         for list_info in ord_check_book[temp_ord.price][1]:
+                        #                                 # [order.time, order.qty, order.tid, order.qid]
+                        #                                 if list_info[1] == temp_ord.qty and list_info[2] == temp_id and list_info[3] == temp_ord.qid:
+                        #                                         found = True
+                        #
+                        #                         if not found:
+                        #                                 print("_______________________")
+                        #                                 print("ORDER NOT FOUND for TRADER : TID - " + str(temp_id))
+                        #                                 print("LOB : " + str(ord_check_book))
+                        #                                 print("ORDER NOT FOUND : " + str(temp_ord))
+                        #                                 sys.exit("Order in trader does not match LOB")
 
 
 
@@ -408,7 +437,7 @@ if __name__ == "__main__":
         # set up parameters for the session
 
         start_time = 0.0
-        end_time = 200.0
+        end_time = 300.0
         duration = end_time - start_time
 
 
@@ -445,32 +474,6 @@ if __name__ == "__main__":
         order_sched = {'sup':supply_schedule, 'dem':demand_schedule,
                        'interval':30, 'timemode':'drip-poisson'}
 
-# #        buyers_spec = [('GVWY',10),('SHVR',10),('ZIC',10),('ZIP',10)]
-# #        sellers_spec = buyers_spec
-# #        traders_spec = {'sellers':sellers_spec, 'buyers':buyers_spec}
-# #
-# #        # run a sequence of trials, one session per trial
-# #
-# #        n_trials = 1
-# #        tdump=open('avg_balance.csv','w')
-# #        trial = 1
-# #        if n_trials > 1:
-# #                dump_all = False
-# #        else:
-# #                dump_all = True
-# #                
-# #        while (trial<(n_trials+1)):
-# #                trial_id = 'trial%04d' % trial
-# #                market_session(trial_id, start_time, end_time, traders_spec, order_sched, tdump, dump_all)
-# #                tdump.flush()
-# #                trial = trial + 1
-# #        tdump.close()
-# #
-# #        sys.exit('Done Now')
-
-
-        
-
         # run a sequence of trials that exhaustively varies the ratio of four trader types
         # NB this has weakness of symmetric proportions on buyers/sellers -- combinatorics of varying that are quite nasty
         
@@ -488,11 +491,11 @@ if __name__ == "__main__":
         min_n = 1
 
         trialnumber = 1
-        buyers_spec = [('LIQ', 3), ('GVWY', 0),
-                                                       ('SMB', 0), ('MOMENTUM', 3), ('MARKET_M', 3),('MEAN_R', 3),('NOISE', 2)]
+        buyers_spec = [('LIQ', 0), ('GVWY', 2),
+                                                       ('SMB', 0), ('MOMENTUM', 0), ('MARKET_M', 5),('MEAN_R', 5),('NOISE', 0)]
         # sellers_spec = buyers_spec
-        sellers_spec = [('LIQ', 3), ('GVWY', 0),
-                                                       ('SMS', 0), ('MOMENTUM', 3), ('MARKET_M', 3),('MEAN_R', 3),('NOISE', 2)]
+        sellers_spec = [('LIQ', 0), ('GVWY', 2),
+                                                       ('SMS', 0), ('MOMENTUM', 0), ('MARKET_M', 5),('MEAN_R', 5),('NOISE', 0)]
         traders_spec = {'sellers':sellers_spec, 'buyers':buyers_spec}
 
 
@@ -501,6 +504,5 @@ if __name__ == "__main__":
                        order_sched, tdump, False, True)
         tdump.flush()
         
-        # print trialnumber
 
 
