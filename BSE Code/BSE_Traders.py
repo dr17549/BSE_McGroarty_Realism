@@ -66,7 +66,8 @@ class Trader:
                     #         print("@@ DEL_2ND_ORDER : change value of order as : " + str(self.orders[iter]) + " which matched : " + str(self.orders[iter]))
                     #     break
                 # this cannot happen because it is simply not possible
-                if len(self.orders) == 0:
+                mcg_names = ['MARKET_M', "LIQ", "NOISE", "MOMENTUM", "MEAN_R"]
+                if len(self.orders) == 0 and self.ttype not in mcg_names:
                     print("ERROR : deleting only entry left ")
                     sys.exit(1)
 
@@ -773,8 +774,8 @@ class Mean_Reversion(Trader):
                 if order != None:
                     order_submit.append(order)
                     print("_______ MEAN_R _______ submits : " + str(order))
-                    return order_submit, []
                     self.lastquote = order
+                    return order_submit, []
 
         return order_submit, []
 
