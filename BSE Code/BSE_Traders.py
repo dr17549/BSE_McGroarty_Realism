@@ -66,7 +66,8 @@ class Trader:
                     #         print("@@ DEL_2ND_ORDER : change value of order as : " + str(self.orders[iter]) + " which matched : " + str(self.orders[iter]))
                     #     break
                 # this cannot happen because it is simply not possible
-                if len(self.orders) == 0:
+                mcg_names = ['MARKET_M', "LIQ", "NOISE", "MOMENTUM", "MEAN_R"]
+                if len(self.orders) == 0 and self.ttype not in mcg_names:
                     print("ERROR : deleting only entry left ")
                     sys.exit(1)
 
@@ -87,7 +88,7 @@ class Trader:
                         profit = ( transactionprice * actual_quantity_traded) - self.orders[0].price
                 self.balance += profit
                 self.n_trades += 1
-                self.profitpertime = self.balance/(time - self.birthtime)
+                # self.profitpertime = self.balance/(time - self.birthtime)
                 # if profit < 0 :
                 #         print profit
                 #         print trade
@@ -129,6 +130,7 @@ class Trader_Giveaway(Trader):
                 if len(self.orders) < 1:
                         order = None
                 else:
+                    if random.random() < 0.05:
                         quoteprice = self.orders[0].price
                         order = Order(self.tid,
                                     self.orders[0].otype,
@@ -480,8 +482,13 @@ class Market_Maker(Trader):
         order = []
         list_order = []
         verbose = True
-
-        if random.random() < self.beta_random and lob['asks']['best'] != None and lob['bids']['best'] != None:
+        if lob['asks']['best'] != None and lob['bids']['best'] != None:
+            best_bid = lob['asks']['best']
+            best_ask = lob['bids']['best']
+        else:
+            best_bid = 99
+            best_ask = 101
+        if random.random() < self.beta_random:
             if verbose:
                 print("____ MARKET MAKER LOGIC ____")
             quantity_vdash = 1
@@ -509,7 +516,7 @@ class Market_Maker(Trader):
                 print("MM : QTY : " + str(quantity))
                 first_order = Order(self.tid,
                               'Ask',
-                              lob['asks']['best'],
+                              best_ask,
                               quantity,
                               time, -1, 'LIM')
                 list_order.append(first_order)
@@ -517,7 +524,7 @@ class Market_Maker(Trader):
 
                 second_order = Order(self.tid,
                               'Bid',
-                              lob['bids']['best'],
+                              best_bid,
                               quantity_vdash,
                               time, -1, 'LIM')
                 list_order.append(second_order)
@@ -543,14 +550,14 @@ class Market_Maker(Trader):
                     print("MM : QTY : " + str(quantity))
                 first_order = Order(self.tid,
                                     'Bid',
-                                    lob['bids']['best'],
+                                    best_bid,
                                     quantity,
                                     time, -1, 'LIM')
                 list_order.append(first_order)
                 self.live_orders.append(first_order)
                 second_order = Order(self.tid,
                                      'Ask',
-                                     lob['asks']['best'],
+                                     best_ask,
                                      quantity_vdash,
                                      time, -1, 'LIM')
                 list_order.append(second_order)
@@ -773,6 +780,7 @@ class Mean_Reversion(Trader):
                 if order != None:
                     order_submit.append(order)
                     print("_______ MEAN_R _______ submits : " + str(order))
+                    self.lastquote = order
                     return order_submit, []
 
         return order_submit, []
@@ -849,7 +857,8 @@ class Noise_Trader(Trader):
                         if lob[self.task]['best'] != None:
                             price  =  lob[self.task]['best']
                         else:
-                            price = lob[self.task]['worst']
+                            # price = lob[self.task]['worst']
+                            price = 100
                         order = Order(self.tid,
                                       self.cap_task,
                                       price,
@@ -863,7 +872,9 @@ class Noise_Trader(Trader):
                         if lob['asks']['best'] != None and lob['bids']['best'] != None:
                             price = numpy.random.uniform(lob['bids']['best'], lob['asks']['best'])
                         else:
-                            price = numpy.random.uniform(lob['bids']['worst'], lob['asks']['worst'])
+                            # price = numpy.random.uniform(lob['bids']['worst'], lob['asks']['worst'])
+                            # MCG Price
+                            price = 100 + 0.05
                         order = Order(self.tid,
                                       self.cap_task,
                                       price,
@@ -877,7 +888,8 @@ class Noise_Trader(Trader):
                         if(lob[self.task]['best'] != None):
                             price = lob[self.task]['best']
                         else:
-                            price = lob[self.task]['worst']
+                            # price = lob[self.task]['worst']
+                            price = 100
                         order = Order(self.tid,
                                       self.cap_task,
                                       price,

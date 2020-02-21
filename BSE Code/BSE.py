@@ -94,6 +94,7 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dum
         counter_b = 0
         counter_s = len(traders) / 2
 
+        set_d_s = False
         if verbose: print('\n%s;  ' % (sess_id))
 
         while time < endtime:
@@ -109,21 +110,38 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dum
 
                 # if verbose: print('\n\n%s; t=%08.2f (%4.1f/100) ' % (sess_id, time, time_left*100))
 
+
                 trade = None
 
-                # this one gives assignments to traders
-                [pending_cust_orders, kills] = customer_orders(time, last_update, traders, trader_stats,
-                                                 order_schedule, pending_cust_orders, orders_verbose)
+                if not set_d_s:
+                        supply_price = 90
+                        demand_price = 90
+                        for temp_id in list(traders.keys()):
+                                if traders[temp_id].ttype not in mcg_names:
+                                        if temp_id[0] == 'S':
+                                                #  tid, otype, price, qty, time, qid, ostyle)
+                                                set_ord = Order(temp_id,'Ask',supply_price, 1, 20.1, -3, 'LIM')
+                                                traders[temp_id].add_order(set_ord, False)
+                                                supply_price += 10
+                                        else:
+                                                set_ord = Order(temp_id, 'Bid', demand_price, 1, 20.1, -3, 'LIM')
+                                                traders[temp_id].add_order(set_ord, False)
+                                                demand_price += 10
+                set_d_s = True
 
-                # customer order is assignment
-                # if any newly-issued customer orders mean quotes on the LOB need to be cancelled, kill them
-                if len(kills) > 0:
-                        # if verbose : print('Kills: %s' % (kills))
-                        for kill in kills:
-                                # if verbose : print('lastquote=%s' % traders[kill].lastquote)
-                                if traders[kill].lastquote != None :
-                                        # if verbose : print('Killing order %s' % (str(traders[kill].lastquote)))
-                                        exchange.del_order(time, traders[kill].lastquote, verbose)
+                # this one gives assignments to traders
+                # [pending_cust_orders, kills] = customer_orders(time, last_update, traders, trader_stats,
+                #                                  order_schedule, pending_cust_orders, orders_verbose)
+                #
+                # # customer order is assignment
+                # # if any newly-issued customer orders mean quotes on the LOB need to be cancelled, kill them
+                # if len(kills) > 0:
+                #         # if verbose : print('Kills: %s' % (kills))
+                #         for kill in kills:
+                #                 # if verbose : print('lastquote=%s' % traders[kill].lastquote)
+                #                 if traders[kill].lastquote != None :
+                #                         # if verbose : print('Killing order %s' % (str(traders[kill].lastquote)))
+                #                         exchange.del_order(time, traders[kill].lastquote, verbose)
 
 
                 # get a limit-order quote (or None) from a randomly chosen trader
@@ -148,6 +166,8 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dum
 
 
                 for tid in list(traders.keys()):
+                # for i in range(0,1):
+                #         tid = list(traders.keys())[random.randint(0, len(traders) - 1)]
                         # print("=============================== " + str(tid) + "'s Turn ================================")
                         # trader selection of McGroarty's
                         # for tid in list(traders.keys()):
@@ -244,7 +264,7 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dum
                                         no_order_traders = ['LIQ', 'MOMENTUM']
                                         for temp_id in list(traders.keys()):
                                                 if traders[temp_id].ttype in two_order_traders:
-                                                        if len(traders[temp_id].orders) > 3:
+                                                        if len(traders[temp_id].orders) > 2:
                                                                 print("TYPE : " + str(traders[
                                                                                               temp_id].ttype) + " ORDER N : " + str(
                                                                         len(traders[temp_id].orders)))
@@ -262,7 +282,7 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dum
                                                                 sys.exit(
                                                                         "Trader orders not equal as required amount ")
                                                 else:
-                                                        if len(traders[temp_id].orders) > 2:
+                                                        if len(traders[temp_id].orders) > 1:
                                                                 print("TYPE : " + str(traders[
                                                                                               temp_id].ttype) + " ORDER N : " + str(
                                                                         len(traders[temp_id].orders)))
@@ -354,38 +374,63 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dum
                         # check both lob and orders in the exchange
                         # orderlist.append([order.time, order.qty, order.tid, order.qid])
 
-                        for price in exchange.bids.lob:
-
-                                for order in exchange.bids.lob[price][1]:
-                                        found = False
-
-                                        for personal_order in traders[order[2]].orders:
-                                                if personal_order.qty == order[1] and price == personal_order.price and order[0] == personal_order.time:
-                                                        found = True
-                                        if not found:
-                                                print("ORDER IN LOB : NOT FOUND TID  : " + str(order) + " - TYPE :" + str(traders[order[2]].ttype))
-                                                print(exchange.bids.lob[price])
-                                                print("_______________________")
-                                                for p_order in traders[order[2]].orders:
-                                                        print(p_order)
-                                                sys.exit("Order in the trader and order in the LOB does not match")
-
-
-                        for price in exchange.asks.lob:
-                                for order in exchange.asks.lob[price][1]:
-                                        found = False
-
-                                        for personal_order in traders[order[2]].orders:
-                                                if personal_order.qty == order[1] and price == personal_order.price and order[0] == personal_order.time:
-                                                        found = True
-                                        if not found:
-                                                print("ORD IN LOB : NOT FOUND TID  : " + str(order) + str(traders[order[2]].ttype))
-                                                print(exchange.asks.lob[price])
-                                                print("_______________________")
-                                                for p_order in traders[order[2]].orders:
-                                                        print(p_order)
-                                                sys.exit("Order in the trader and order in the LOB does not match")
+                        # for price in exchange.bids.lob:
+                        #
+                        #         for order in exchange.bids.lob[price][1]:
+                        #                 found = False
+                        #
+                        #                 for personal_order in traders[order[2]].orders:
+                        #                         if personal_order.qty == order[1] and price == personal_order.price and order[0] == personal_order.time:
+                        #                                 found = True
+                        #                 if not found:
+                        #                         print("ORDER IN LOB : NOT FOUND TID  : " + str(order) + " - TYPE :" + str(traders[order[2]].ttype))
+                        #                         print(exchange.bids.lob[price])
+                        #                         print("_______________________")
+                        #                         for p_order in traders[order[2]].orders:
+                        #                                 print(p_order)
+                        #                         sys.exit("Order in the trader and order in the LOB does not match")
+                        #
+                        #
+                        # for price in exchange.asks.lob:
+                        #         for order in exchange.asks.lob[price][1]:
+                        #                 found = False
+                        #
+                        #                 for personal_order in traders[order[2]].orders:
+                        #                         if personal_order.qty == order[1] and price == personal_order.price and order[0] == personal_order.time:
+                        #                                 found = True
+                        #                 if not found:
+                        #                         print("ORD IN LOB : NOT FOUND TID  : " + str(order) + str(traders[order[2]].ttype))
+                        #                         print(exchange.asks.lob[price])
+                        #                         print("_______________________")
+                        #                         for p_order in traders[order[2]].orders:
+                        #                                 print(p_order)
+                        #                         sys.exit("Order in the trader and order in the LOB does not match")
                         # __________________________________________________________________________
+
+                        for temp_id in list(traders.keys()):
+                                for temp_ord in traders[temp_id].orders:
+                                        if temp_ord.qid > 0 and traders[temp_id].ttype in mcg_names:
+                                                found = False
+                                                if temp_ord.otype == 'Bid':
+                                                        ord_check_book = exchange.bids.lob
+                                                else:
+                                                        ord_check_book = exchange.asks.lob
+
+                                                if temp_ord.price not in ord_check_book:
+                                                        print("TEMPORD : " + str(temp_ord))
+                                                        print("LOB : " + str(ord_check_book))
+                                                        sys.exit("PRICE is not in the lob")
+                                                for list_info in ord_check_book[temp_ord.price][1]:
+                                                        # [order.time, order.qty, order.tid, order.qid]
+                                                        if list_info[1] == temp_ord.qty and list_info[2] == temp_id and list_info[3] == temp_ord.qid:
+                                                                found = True
+
+                                                if not found:
+                                                        print("_______________________")
+                                                        print("ORDER NOT FOUND for TRADER : TID - " + str(temp_id) + " TYPE :" + str(traders[temp_id].ttype))
+                                                        print("LOB : " + str(ord_check_book))
+                                                        print("ORDER NOT FOUND : " + str(temp_ord))
+                                                        sys.exit("Order in trader does not match LOB")
 
 
 
@@ -412,7 +457,7 @@ if __name__ == "__main__":
         # set up parameters for the session
 
         start_time = 0.0
-        end_time = 1000.0
+        end_time = 600.0
         duration = end_time - start_time
 
 
@@ -466,11 +511,11 @@ if __name__ == "__main__":
         min_n = 1
 
         trialnumber = 1
-        buyers_spec = [('LIQ', 0), ('GVWY', 2),
-                                                       ('SMB', 0), ('MOMENTUM', 0), ('MARKET_M', 5),('MEAN_R', 5),('NOISE', 0)]
+        buyers_spec = [('LIQ', 0), ('GVWY', 4),
+                                                       ('SMB', 0), ('MOMENTUM', 0), ('MARKET_M', 4),('MEAN_R', 0),('NOISE', 0)]
         # sellers_spec = buyers_spec
-        sellers_spec = [('LIQ', 0), ('GVWY', 2),
-                                                       ('SMS', 0), ('MOMENTUM', 0), ('MARKET_M', 5),('MEAN_R', 5),('NOISE', 0)]
+        sellers_spec = [('LIQ', 0), ('GVWY', 4),
+                                                       ('SMS', 0), ('MOMENTUM', 0), ('MARKET_M', 4),('MEAN_R', 0),('NOISE', 0)]
         traders_spec = {'sellers':sellers_spec, 'buyers':buyers_spec}
 
 

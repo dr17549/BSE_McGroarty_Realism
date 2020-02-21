@@ -371,6 +371,36 @@ class Test_Exchange_methods(unittest.TestCase):
         self.assertEqual(transaction_record['party2'], 'T01')
         self.assertEqual(order_quantity, 1)
 
+    def test_adding_exchange(self):
+        exchange = Exchange()
+        exchange.asks = Orderbook_half('asks', 1)
+        exchange.bids = Orderbook_half('bids', 100)
+        order01 = Order('T01', 'Ask', 3, 1, 1, 0, 'LIM')
+        order03 = Order('T01', 'Ask', 5, 2, 1, 0, 'LIM')
+        exchange.asks.book_add(order01)
+        exchange.asks.book_add(order03)
+        self.assertEqual(exchange.asks.n_orders, 1)
+        self.assertEqual(exchange.asks.lob, collections.OrderedDict([(5, [2, [[1, 2, 'T01', 0]]])]))
+        print(exchange.asks.lob)
+        order02 = Order('T01', 'Ask', 6, 3, 1, 0, 'LIM')
+        exchange.asks.book_add(order02)
+        self.assertEqual(exchange.asks.n_orders, 1)
+
+    def test_adding_exchange_bid(self):
+        exchange = Exchange()
+        exchange.asks = Orderbook_half('asks', 1)
+        exchange.bids = Orderbook_half('bids', 100)
+        order01 = Order('T01', 'Bid', 3, 1, 1, 0, 'LIM')
+        order03 = Order('T01', 'Bid', 5, 2, 1, 0, 'LIM')
+        exchange.bids.book_add(order01)
+        exchange.bids.book_add(order03)
+        self.assertEqual(exchange.bids.n_orders, 1)
+        self.assertEqual(exchange.bids.lob, collections.OrderedDict([(5, [2, [[1, 2, 'T01', 0]]])]))
+        print(exchange.bids.lob)
+        order02 = Order('T01', 'Bid', 6, 3, 1, 0, 'LIM')
+        exchange.bids.book_add(order02)
+        self.assertEqual(exchange.bids.n_orders, 1)
+
 
 
 if __name__ == '__main__':
