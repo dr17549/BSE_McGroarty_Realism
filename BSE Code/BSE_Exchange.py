@@ -245,6 +245,7 @@ class Exchange(Orderbook):
         # NB at this point we have deleted the order from the exchange's records
         # but the two traders concerned still have to be notified
         if verbose: print('counterparty %s' % counterparty)
+        list_transac_rec = []
         transaction_record = []
         if len(counterparty) > 0:
             # process the trade
@@ -260,13 +261,14 @@ class Exchange(Orderbook):
                                       'del_party1': cp_del_in_trader,
                                       'del_party2': party_del_in_trader
                                       }
+                list_transac_rec.append(transaction_record)
                 self.tape.append(transaction_record)
-            if len(counterparty) > 1:
-                for party in counterparty:
-                    print(party)
-                print(transaction_record)
-                sys.exit("More than one opposite party - check for error before commenting out")
-            return transaction_record, order_quantity
+            # if len(counterparty) > 1:
+            #     for party in counterparty:
+            #         print(party)
+            #     print(list_transac_rec)
+            #     sys.exit("More than one opposite party - check for error before commenting out")
+            return list_transac_rec, order_quantity
         else:
             if print_check:
                 print("@@@@@ CAME HERE TO DELETE")
@@ -283,7 +285,7 @@ class Exchange(Orderbook):
                     for check_ord in self.bids.lob[price][1]:
                         if check_ord[3] == order.qid:
                             sys.exit("QID still in the list, not supposed to happen - from BID SIDE")
-            return None, 0
+            return [], 0
 
     def tape_dump(self, fname, fmode, tmode):
         dumpfile = open(fname, fmode)

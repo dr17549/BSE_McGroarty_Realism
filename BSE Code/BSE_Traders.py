@@ -460,7 +460,7 @@ class Trader_ZIP(Trader):
 class Market_Maker(Trader):
     def __init__(self, ttype, tid, balance, time):
         Trader.__init__(self, ttype, tid, balance, time)
-        self.beta_random = 0.1
+        self.beta_random = 0.15
         self.moving_average = 0.0
         self.moving_decision = 0
         self.last_orders = []
@@ -510,7 +510,7 @@ class Market_Maker(Trader):
                 self.moving_average = float((1 + self.moving_average) / 2)
 
                 # Submit sell at best price with volume = U(vmin,vmax)
-                quantity = int(numpy.random.uniform(1, lob['asks']['n']))
+                quantity = int(numpy.random.uniform(1, 100))
                 if quantity < 1:
                     quantity = 1
                 print("MM : QTY : " + str(quantity))
@@ -543,7 +543,7 @@ class Market_Maker(Trader):
                 list_order = []
                 self.moving_average = float((0 + self.moving_average) / 2)
                 # Submit sell at best price with volume = U(vmin,vmax)
-                quantity = int(numpy.random.uniform(1, lob['bids']['n']))
+                quantity = int(numpy.random.uniform(1, 100))
                 if quantity < 1:
                     quantity = 1
                 if verbose:
@@ -577,7 +577,7 @@ class Liqudity_consumer(Trader):
 
     def __init__(self, ttype, tid, balance, time):
         Trader.__init__(self, ttype, tid, balance, time)
-        self.lc_rand = 0.1
+        self.lc_rand = 0.05
         self.moving_average = 0
         self.total_volume = 10
         self.remainding_volume = 10
@@ -596,7 +596,7 @@ class Liqudity_consumer(Trader):
         else:
 
             if self.first_call:
-                initial_quantity = int(numpy.random.uniform(1,10))
+                initial_quantity = int(numpy.random.uniform(1,20))
 
                 if random.random() > 0.5:
                     #BUY
@@ -789,7 +789,7 @@ class Mean_Reversion(Trader):
 class Noise_Trader(Trader):
     def __init__(self, ttype, tid, balance, time):
         Trader.__init__(self, ttype, tid, balance, time)
-        self.nt = 0.4
+        self.nt = 0.8
         self.task = 'asks'
         self.cap_task = 'Ask'
         self.last_order = None
@@ -814,16 +814,16 @@ class Noise_Trader(Trader):
 
                 alpha_random = numpy.random.dirichlet(numpy.ones(3), size=1)
                 alpha_sam = numpy.random.uniform(0, 1)
-                alpha_m = alpha_random[0][0]
-                alpha_l = alpha_random[0][1]
-                alpha_c = alpha_random[0][1]
+                alpha_m = 0.03
+                alpha_l = 0.54
+                alpha_c = 0.43
 
                 # by sampling from dirichlet, the sum of these numbers will be 1
                 list_random_prob = numpy.random.dirichlet(numpy.ones(4),size=1)
-                crs = list_random_prob[0][0]
-                inspr = list_random_prob[0][1]
-                spr = list_random_prob[0][2]
-                ospr = list_random_prob[0][3]
+                crs = 0.0032
+                inspr = 0.0978
+                spr = 0.1726
+                ospr = 0.7264
 
                 # sampling to determine which cases to go to
                 sample = numpy.random.uniform(0,1)
@@ -838,8 +838,14 @@ class Noise_Trader(Trader):
                 # from numpy
                 # quantity = numpy.random.lognormal(mean,sd)
 
-
+                # market order
                 if alpha_sam <= alpha_m:
+                    mean = 7
+                    sd = 0.1
+                    offset_uv = numpy.random.uniform(0, 1)
+
+                    quantity = round(math.pow(math.e, mean + (sd * offset_uv)))
+
                     order = Order(self.tid,
                                       self.cap_task,
                                       lob[self.task]['worst'],
@@ -850,6 +856,12 @@ class Noise_Trader(Trader):
                     print("NOISE TRADER : Submit Market order : " + str(order))
 
                 elif alpha_sam > alpha_m and alpha_sam <= alpha_l:
+                    mean = 8
+                    sd = 0.7
+                    offset_uv = numpy.random.uniform(0, 1)
+
+                    quantity = round(math.pow(math.e, mean + (sd * offset_uv)))
+
                     print("Submit Limit order")
                     # from equation
                     # Crossing limit order
@@ -902,8 +914,8 @@ class Noise_Trader(Trader):
                         # Generate a random value, poffspr using Equation 8
                         # Submit order at a price poffspr outside of spread using Equation 7.
                         offset_uO = numpy.random.uniform(0, 1)
-                        xmin = numpy.random.uniform(0, 1)
-                        Beta = numpy.random.uniform(0, 1)
+                        xmin = 0.05
+                        Beta = 2.72
                         price = xmin * math.pow(1 - offset_uO, -(1/(Beta - 1)))
                         order = Order(self.tid,
                                       self.cap_task,
