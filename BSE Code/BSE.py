@@ -244,7 +244,7 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dum
                                         no_order_traders = ['LIQ', 'MOMENTUM']
                                         for temp_id in list(traders.keys()):
                                                 if traders[temp_id].ttype in two_order_traders:
-                                                        if len(traders[temp_id].orders) > 2:
+                                                        if len(traders[temp_id].orders) > 3:
                                                                 print("TYPE : " + str(traders[
                                                                                               temp_id].ttype) + " ORDER N : " + str(
                                                                         len(traders[temp_id].orders)))
@@ -262,7 +262,7 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dum
                                                                 sys.exit(
                                                                         "Trader orders not equal as required amount ")
                                                 else:
-                                                        if len(traders[temp_id].orders) > 1:
+                                                        if len(traders[temp_id].orders) > 2:
                                                                 print("TYPE : " + str(traders[
                                                                                               temp_id].ttype) + " ORDER N : " + str(
                                                                         len(traders[temp_id].orders)))
@@ -387,31 +387,6 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dum
                                                 sys.exit("Order in the trader and order in the LOB does not match")
                         # __________________________________________________________________________
 
-                        for temp_id in list(traders.keys()):
-                                for temp_ord in traders[temp_id].orders:
-                                        if temp_ord.qid > 0 and traders[temp_id].ttype in mcg_names:
-                                                found = False
-                                                if temp_ord.otype == 'Bid':
-                                                        ord_check_book = exchange.bids.lob
-                                                else:
-                                                        ord_check_book = exchange.asks.lob
-
-                                                if temp_ord.price not in ord_check_book:
-                                                        print("TEMPORD : " + str(temp_ord))
-                                                        print("LOB : " + str(ord_check_book))
-                                                        sys.exit("PRICE is not in the lob")
-                                                for list_info in ord_check_book[temp_ord.price][1]:
-                                                        # [order.time, order.qty, order.tid, order.qid]
-                                                        if list_info[1] == temp_ord.qty and list_info[2] == temp_id and list_info[3] == temp_ord.qid:
-                                                                found = True
-
-                                                if not found:
-                                                        print("_______________________")
-                                                        print("ORDER NOT FOUND for TRADER : TID - " + str(temp_id) + " TYPE :" + str(traders[temp_id].ttype))
-                                                        print("LOB : " + str(ord_check_book))
-                                                        print("ORDER NOT FOUND : " + str(temp_ord))
-                                                        sys.exit("Order in trader does not match LOB")
-
 
 
 
@@ -437,7 +412,7 @@ if __name__ == "__main__":
         # set up parameters for the session
 
         start_time = 0.0
-        end_time = 1500.0
+        end_time = 1000.0
         duration = end_time - start_time
 
 
@@ -491,10 +466,10 @@ if __name__ == "__main__":
         min_n = 1
 
         trialnumber = 1
-        buyers_spec = [('LIQ', 5), ('GVWY', 2),
+        buyers_spec = [('LIQ', 0), ('GVWY', 2),
                                                        ('SMB', 0), ('MOMENTUM', 0), ('MARKET_M', 5),('MEAN_R', 5),('NOISE', 0)]
         # sellers_spec = buyers_spec
-        sellers_spec = [('LIQ', 5), ('GVWY', 2),
+        sellers_spec = [('LIQ', 0), ('GVWY', 2),
                                                        ('SMS', 0), ('MOMENTUM', 0), ('MARKET_M', 5),('MEAN_R', 5),('NOISE', 0)]
         traders_spec = {'sellers':sellers_spec, 'buyers':buyers_spec}
 

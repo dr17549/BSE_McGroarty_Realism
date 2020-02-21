@@ -143,7 +143,7 @@ def customer_orders(time, last_update, traders, trader_stats, os, pending, verbo
 
     n_buyers = trader_stats['n_buyers']
     n_sellers = trader_stats['n_sellers']
-    mcGagents = ['LIQ', "NOISE", 'MARKET_M', 'MOMENTUM', 'MEAN_R']
+
     shuffle_times = True
 
     cancellations = []
@@ -159,9 +159,8 @@ def customer_orders(time, last_update, traders, trader_stats, os, pending, verbo
         ordertype = 'Bid'
         (sched, mode) = getschedmode(time, os['dem'])
         for t in range(n_buyers):
-            tname = 'B%02d' % t
-            if traders[tname].ttype not in mcGagents:
                 issuetime = time + issuetimes[t]
+                tname = 'B%02d' % t
                 orderprice = getorderprice(t, sched, n_buyers, mode, issuetime)
                 order = Order(tname, ordertype, orderprice, 1, issuetime, -3.14, 'LIM')
                 new_pending.append(order)
@@ -171,9 +170,8 @@ def customer_orders(time, last_update, traders, trader_stats, os, pending, verbo
         ordertype = 'Ask'
         (sched, mode) = getschedmode(time, os['sup'])
         for t in range(n_sellers):
-            tname = 'S%02d' % t
-            if traders[tname].ttype not in mcGagents:
                 issuetime = time + issuetimes[t]
+                tname = 'S%02d' % t
                 orderprice = getorderprice(t, sched, n_sellers, mode, issuetime)
                 order = Order(tname, ordertype, orderprice, 1, issuetime, -3.14, 'LIM')
                 new_pending.append(order)

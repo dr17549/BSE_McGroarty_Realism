@@ -71,7 +71,7 @@ class Orderbook_half:
                         self.best_tid = None
                         self.best_qty = 0
 
-                if lob_verbose : print(self.lob)
+                if lob_verbose : print self.lob
 
 
         def book_add(self, order):
