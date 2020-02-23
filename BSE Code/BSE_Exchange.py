@@ -124,7 +124,6 @@ class Exchange(Orderbook):
             print("______________________________END BOOK ______________________________________")
 
 
-        # todo add check loop so that the TID is not the same
         if order.ostyle == 'LIM':
 
             original_quantity = order.qty
@@ -133,50 +132,40 @@ class Exchange(Orderbook):
                 #     print("BID : Best ask : " + str(best_bid) + " >= " + str(best_ask) + " Orders : " + str(self.asks.n_orders > 0))
 
                 if self.asks.n_orders > 0 and best_bid >= best_ask:
-                    if self.asks.n_orders == 1 and order.tid == self.asks.lob[best_ask][1][0][2]:
-                        pass
 
-                    elif order.tid == self.asks.lob[best_ask][1][0][2] and best_bid < list(self.asks.lob)[1]:
-                        pass
-                    else:
-                        remaining_quantity = order.qty
-                        while remaining_quantity > 0 and self.asks.n_orders > 0:
-                            # counterparty = self.append_counter_party(counterparty, best_ask_tid, best_ask)
-                            if print_check:
-                                print(" ___ DELETE BEST BID : ")
-                            party_del_in_trader = self.bids.decrement_order(oprice, order.tid)
+                    remaining_quantity = order.qty
+                    while remaining_quantity > 0 and self.asks.n_orders > 0:
+                        counterparty = self.append_counter_party(counterparty, best_ask_tid, best_ask)
+                        if print_check:
+                            print(" ___ DELETE BEST BID : ")
+                        party_del_in_trader = self.bids.decrement_order(oprice, order.tid)
 
-                            if print_check:
-                                print(" ___ DELETE BEST ASK : ")
-                            cp, cp_order_qid, cp_del_in_trader, trade_price = self.asks.delete_best(order.tid)
-                            counterparty = self.append_counter_party(counterparty,cp, trade_price)
+                        if print_check:
+                            print(" ___ DELETE BEST ASK : ")
+                        cp, cp_order_qid, cp_del_in_trader = self.asks.delete_best()
 
 
-                            remaining_quantity = remaining_quantity - 1
-                            order_quantity = original_quantity - remaining_quantity
+                        remaining_quantity = remaining_quantity - 1
+                        order_quantity = original_quantity - remaining_quantity
 
             else:
                 # if False:
                 #     print("ASK : Best bid : " + str(best_ask) + " <= " + str(best_bid) + " Orders : " + str(self.bids.n_orders > 0))
-                if self.bids.n_orders > 0 and best_ask <= best_bid:
-                    if self.bids.n_orders == 1 and order.tid == self.bids.lob[best_bid][1][0][2]:
-                        pass
-                    elif order.tid == self.bids.lob[best_bid][1][0][2] and best_ask > list(self.bids.lob)[1]:
-                        pass
-                    else:
-                        remaining_quantity = order.qty
-                        while remaining_quantity > 0 and self.bids.n_orders > 0:
-                            # counterparty = self.append_counter_party(counterparty, best_bid_tid, best_bid)
-                            if print_check:
-                                print(" ___ DELETE BEST ASK : ")
-                            party_del_in_trader = self.asks.decrement_order(oprice, order.tid)
-                            if print_check:
-                                print(" ___ DELETE BEST BID : ")
-                            cp, cp_order_qid, cp_del_in_trader, trade_price = self.bids.delete_best(order.tid)
-                            counterparty = self.append_counter_party(counterparty, cp, trade_price)
 
-                            remaining_quantity = remaining_quantity - 1
-                            order_quantity = original_quantity - remaining_quantity
+                if self.bids.n_orders > 0 and best_ask <= best_bid:
+
+                    remaining_quantity = order.qty
+                    while remaining_quantity > 0 and self.bids.n_orders > 0:
+                        counterparty = self.append_counter_party(counterparty, best_bid_tid, best_bid)
+                        if print_check:
+                            print(" ___ DELETE BEST ASK : ")
+                        party_del_in_trader = self.asks.decrement_order(oprice, order.tid)
+                        if print_check:
+                            print(" ___ DELETE BEST BID : ")
+                        cp, cp_order_qid, cp_del_in_trader = self.bids.delete_best()
+
+                        remaining_quantity = remaining_quantity - 1
+                        order_quantity = original_quantity - remaining_quantity
 
         # market order takes anything with the given quantity at any price
         elif order.ostyle == 'MKT':
@@ -190,7 +179,7 @@ class Exchange(Orderbook):
                     while self.asks.n_orders > 0 and remaining_quantity > 0:
                         counterparty = self.append_counter_party(counterparty, best_ask_tid, best_ask)
                         # print("__ ASK SIDE __ : ")
-                        cp, cp_order_qid, cp_del_in_trader, trade_price   = self.asks.delete_best(order.tid)
+                        cp, cp_order_qid, cp_del_in_trader = self.asks.delete_best()
                         # print("BID -- LOB N ORDERS : " + str(self.asks.n_orders))
                         # print("__BID SIDE __ : ")
                         party_del_in_trader = self.bids.decrement_order(oprice, order.tid)
@@ -213,7 +202,7 @@ class Exchange(Orderbook):
                         # counterparty.append([best_bid_tid,best_bid])
                         counterparty = self.append_counter_party(counterparty, best_bid_tid, best_bid)
                         # print("__BID SIDE __ : ")
-                        cp, cp_order_qid,cp_del_in_trader, trade_price = self.bids.delete_best(order.tid)
+                        cp, cp_order_qid,cp_del_in_trader = self.bids.delete_best()
                         # print("++ ASK -- BID SIDE ORDERS : " + str(self.bids.n_orders))
                         # print("__ ASK SIDE __ : ")
                         party_del_in_trader = self.asks.decrement_order(oprice, order.tid)
@@ -245,7 +234,6 @@ class Exchange(Orderbook):
         # NB at this point we have deleted the order from the exchange's records
         # but the two traders concerned still have to be notified
         if verbose: print('counterparty %s' % counterparty)
-        list_transac_rec = []
         transaction_record = []
         if len(counterparty) > 0:
             # process the trade
@@ -261,14 +249,13 @@ class Exchange(Orderbook):
                                       'del_party1': cp_del_in_trader,
                                       'del_party2': party_del_in_trader
                                       }
-                list_transac_rec.append(transaction_record)
                 self.tape.append(transaction_record)
-            # if len(counterparty) > 1:
-            #     for party in counterparty:
-            #         print(party)
-            #     print(list_transac_rec)
-            #     sys.exit("More than one opposite party - check for error before commenting out")
-            return list_transac_rec, order_quantity
+            if len(counterparty) > 1:
+                for party in counterparty:
+                    print(party)
+                print(transaction_record)
+                sys.exit("More than one opposite party - check for error before commenting out")
+            return transaction_record, order_quantity
         else:
             if print_check:
                 print("@@@@@ CAME HERE TO DELETE")
@@ -285,7 +272,7 @@ class Exchange(Orderbook):
                     for check_ord in self.bids.lob[price][1]:
                         if check_ord[3] == order.qid:
                             sys.exit("QID still in the list, not supposed to happen - from BID SIDE")
-            return [], 0
+            return None, 0
 
     def tape_dump(self, fname, fmode, tmode):
         dumpfile = open(fname, fmode)
