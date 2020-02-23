@@ -71,7 +71,7 @@ class Orderbook_half:
                         self.best_tid = None
                         self.best_qty = 0
 
-                if lob_verbose : print self.lob
+                if lob_verbose : print(self.lob)
 
 
         def book_add(self, order):
@@ -108,25 +108,79 @@ class Orderbook_half:
                         self.build_lob()
                 # print('book_del %s', self.orders)
 
-        def delete_best(self):
+        def delete_best(self, oppo_tid, remaining_qty):
                 verbose = True
                 del_in_trader = False
+                quantity_decremented = 1
                 if verbose:
                         print("BEFORE LOB :" + str(self.lob))
                 # delete order: when the best bid/ask has been hit, delete it from the book
                 # the TraderID of the deleted order is return-value, as counterparty to the trade
                 best_price_orders = self.lob[self.best_price]
+                trade_price = self.best_price
                 best_price_qty = best_price_orders[0]
                 best_price_counterparty = best_price_orders[1][0][2]
                 order_del_qid = best_price_orders[1][0][3]
-                print("BEST PRICE QTY : " + str(best_price_qty))
-                if best_price_qty == 1:
+                if oppo_tid == best_price_counterparty:
+                        # best_price_orders = self.lob[1]
+                        if self.booktype == 'Bid':
+                                second_best_price = list(self.lob)[1]
+
+                        else:
+                                second_best_price = list(self.lob)[len(self.lob) - 2]
+                        print("Second best price : " + str(second_best_price))
+                        trade_price = second_best_price
+                        best_price_orders  = self.lob[second_best_price]
+                        best_price_qty = best_price_orders[0]
+                        best_price_counterparty = best_price_orders[1][0][2]
+                        order_del_qid = best_price_orders[1][0][3]
+
+                        if best_price_qty == 1:
+                                del_in_trader = True
+                                del (self.lob[second_best_price])
+                                del (self.orders[best_price_counterparty])
+                                self.n_orders = self.n_orders - 1
+                                quantity_decremented = 1
+                        #todo delete one chunck not just one
+                        else:
+                                if best_price_qty < remaining_qty:
+                                        quantity_decremented = best_price_qty
+                                else:
+                                        quantity_decremented = remaining_qty
+
+                                lob_list = best_price_orders[1]
+                                first_order_quantity = best_price_orders[1][0][1]
+                                self.best_qty -= 1
+                                # must delete if the order quantity is the same
+                                if first_order_quantity > quantity_decremented:
+                                        lob_list[0][1] = first_order_quantity - quantity_decremented
+                                        self.lob[second_best_price] = [best_price_qty - quantity_decremented, lob_list]
+                                else:
+                                        self.n_orders -= 1
+                                        self.lob[second_best_price] = [best_price_qty - quantity_decremented, best_price_orders[1][:1]]
+
+                                # update the bid list: counterparty's bid has been deleted
+                                # del (self.orders[best_price_counterparty])
+
+                                if first_order_quantity > quantity_decremented:
+                                        # it's the pointer pointing to the same order, so this also decreases the quantity in the trader
+                                        change_qty = self.orders[best_price_counterparty].qty
+                                        self.orders[best_price_counterparty].qty = change_qty - quantity_decremented
+
+                                else:
+                                        del_in_trader = True
+                                        del (self.orders[best_price_counterparty])
+
+                        # sys.exit("should not happen")
+
+                elif best_price_qty == 1:
+                        trade_price = self.best_price
                         del_in_trader = True
-                        # here the order deletes the best price
-                        # print("from function : deletebest() : THE LOB :" + str(self.lob))
-                        # print("BEST PRICE : " + str(self.best_price))
+
                         del(self.lob[self.best_price])
                         del(self.orders[best_price_counterparty])
+                        quantity_decremented = 1
+                        del_in_trader = True
                         self.n_orders = self.n_orders - 1
                         if self.n_orders > 0:
                                 if self.booktype == 'Bid':
@@ -139,27 +193,34 @@ class Orderbook_half:
                                 self.best_price = self.worstprice
                                 self.lob_depth = 0
                                 self.best_qty = 0
+                #todo delete the whole order if it is beyond 1
                 elif best_price_qty > 1:
-                        # print("DELTED SMTH FOR SURE")
-                        # best_bid_qty>1 so the order decrements the quantity of the best bid
-                        # update the lob with the decremented order data
-                        # self.lob[self.best_price] = [best_price_qty - 1, best_price_orders[1][:1]
+                        trade_price = self.best_price
+                        if best_price_qty < remaining_qty:
+                                quantity_decremented = best_price_qty
+                        else:
+                                quantity_decremented = remaining_qty
+
+
                         lob_list = best_price_orders[1]
                         first_order_quantity = best_price_orders[1][0][1]
-                        self.best_qty -= 1
-                        if first_order_quantity > 1:
+                        self.best_qty -= quantity_decremented
+
+                        # correct - delete chunk
+                        if first_order_quantity > quantity_decremented:
                                 lob_list[0][1] = first_order_quantity - 1
-                                self.lob[self.best_price] = [best_price_qty - 1, lob_list]
+                                self.lob[self.best_price] = [best_price_qty - quantity_decremented, lob_list]
                         else:
                                 self.n_orders -= 1
-                                self.lob[self.best_price] = [best_price_qty - 1, best_price_orders[1][:1]]
+                                self.lob[self.best_price] = [best_price_qty - quantity_decremented, best_price_orders[1][:1]]
 
                         # update the bid list: counterparty's bid has been deleted
                         # del (self.orders[best_price_counterparty])
 
-                        if first_order_quantity > 1:
+                        if first_order_quantity > quantity_decremented:
+                                # it's the pointer pointing to the same order, so this also decreases the quantity in the trader
                                 change_qty = self.orders[best_price_counterparty].qty
-                                self.orders[best_price_counterparty].qty = change_qty - 1
+                                self.orders[best_price_counterparty].qty = change_qty - quantity_decremented
 
                         else:
                                 del_in_trader = True
@@ -174,9 +235,9 @@ class Orderbook_half:
                         # for i in self.orders:
                         #         print("SELF.ORDERS : " + str(i) + " - " + str(self.orders[i]))
                 print("DEL - BEST : DEL IN TRADER : " + str(del_in_trader))
-                return best_price_counterparty, order_del_qid, del_in_trader
+                return best_price_counterparty, order_del_qid, del_in_trader, trade_price, quantity_decremented
 
-        def decrement_order(self,price,tid):
+        def decrement_order(self,price,tid, quantity_decremented):
                 verbose = True
                 del_in_trader = False
                 if verbose:
@@ -251,20 +312,20 @@ class Orderbook_half:
                                                 break
                                         else:
                                                 # first_order_quantity = self.lob[price][1][agent_submitted][1]
-                                                self.lob[price][1][agent_submitted][1] -= 1
+                                                self.lob[price][1][agent_submitted][1] -= quantity_decremented
                                                 break
 
                                         # element_in_lobprice = agent_submitted
 
                         #decrement quantity overall
                         self.lob[price][0] -= 1
-                        self.best_qty -= 1
+                        self.best_qty -= quantity_decremented
                         # print(" > 1 $$$$$$ DEC -- ORDER N : " + str(self.n_orders))
                         # Decrement the overall quantity - not correct !!
                         if trade_quantity_before_dec > 1:
                                 # self.orders[best_price_counterparty].qty -= 1
                                 change_qty = self.orders[best_price_counterparty].qty
-                                self.orders[best_price_counterparty].qty = change_qty - 1
+                                self.orders[best_price_counterparty].qty = change_qty - quantity_decremented
 
                         else:
                                 del_in_trader = True

@@ -66,7 +66,8 @@ class Trader:
                     #         print("@@ DEL_2ND_ORDER : change value of order as : " + str(self.orders[iter]) + " which matched : " + str(self.orders[iter]))
                     #     break
                 # this cannot happen because it is simply not possible
-                if len(self.orders) == 0:
+                mcg_names = ['MARKET_M', "LIQ", "NOISE", "MOMENTUM", "MEAN_R"]
+                if len(self.orders) == 0 and self.ttype not in mcg_names:
                     print("ERROR : deleting only entry left ")
                     sys.exit(1)
 
@@ -81,13 +82,13 @@ class Trader:
                 # NB What follows is **LAZY** -- assumes all orders are quantity=1
                 transactionprice = trade['price']
                 # todo profit calculation is not correct since it doesn't take quantity into account
-                if self.orders[0].otype == 'Bid':
-                        profit = self.orders[0].price - ( transactionprice * actual_quantity_traded)
-                else:
-                        profit = ( transactionprice * actual_quantity_traded) - self.orders[0].price
-                self.balance += profit
+                # if self.orders[0].otype == 'Bid':
+                #         profit = self.orders[0].price - ( transactionprice * actual_quantity_traded)
+                # else:
+                #         profit = ( transactionprice * actual_quantity_traded) - self.orders[0].price
+                # self.balance += profit
                 self.n_trades += 1
-                self.profitpertime = self.balance/(time - self.birthtime)
+                # self.profitpertime = self.balance/(time - self.birthtime)
                 # if profit < 0 :
                 #         print profit
                 #         print trade
@@ -129,6 +130,7 @@ class Trader_Giveaway(Trader):
                 if len(self.orders) < 1:
                         order = None
                 else:
+                    if random.random() < 0.05:
                         quoteprice = self.orders[0].price
                         order = Order(self.tid,
                                     self.orders[0].otype,
@@ -458,7 +460,7 @@ class Trader_ZIP(Trader):
 class Market_Maker(Trader):
     def __init__(self, ttype, tid, balance, time):
         Trader.__init__(self, ttype, tid, balance, time)
-        self.beta_random = 0.1
+        self.beta_random = 0.15
         self.moving_average = 0.0
         self.moving_decision = 0
         self.last_orders = []
@@ -480,8 +482,13 @@ class Market_Maker(Trader):
         order = []
         list_order = []
         verbose = True
-
-        if random.random() < self.beta_random and lob['asks']['best'] != None and lob['bids']['best'] != None:
+        if lob['asks']['best'] != None and lob['bids']['best'] != None:
+            best_bid = lob['asks']['best']
+            best_ask = lob['bids']['best']
+        else:
+            best_bid = 99
+            best_ask = 101
+        if random.random() < self.beta_random:
             if verbose:
                 print("____ MARKET MAKER LOGIC ____")
             quantity_vdash = 1
@@ -503,13 +510,13 @@ class Market_Maker(Trader):
                 self.moving_average = float((1 + self.moving_average) / 2)
 
                 # Submit sell at best price with volume = U(vmin,vmax)
-                quantity = int(numpy.random.uniform(1, lob['asks']['n']))
+                quantity = int(numpy.random.uniform(1, 100))
                 if quantity < 1:
                     quantity = 1
                 print("MM : QTY : " + str(quantity))
                 first_order = Order(self.tid,
                               'Ask',
-                              lob['asks']['best'],
+                              best_ask,
                               quantity,
                               time, -1, 'LIM')
                 list_order.append(first_order)
@@ -517,7 +524,7 @@ class Market_Maker(Trader):
 
                 second_order = Order(self.tid,
                               'Bid',
-                              lob['bids']['best'],
+                              best_bid,
                               quantity_vdash,
                               time, -1, 'LIM')
                 list_order.append(second_order)
@@ -536,21 +543,21 @@ class Market_Maker(Trader):
                 list_order = []
                 self.moving_average = float((0 + self.moving_average) / 2)
                 # Submit sell at best price with volume = U(vmin,vmax)
-                quantity = int(numpy.random.uniform(1, lob['bids']['n']))
+                quantity = int(numpy.random.uniform(1, 100))
                 if quantity < 1:
                     quantity = 1
                 if verbose:
                     print("MM : QTY : " + str(quantity))
                 first_order = Order(self.tid,
                                     'Bid',
-                                    lob['bids']['best'],
+                                    best_bid,
                                     quantity,
                                     time, -1, 'LIM')
                 list_order.append(first_order)
                 self.live_orders.append(first_order)
                 second_order = Order(self.tid,
                                      'Ask',
-                                     lob['asks']['best'],
+                                     best_ask,
                                      quantity_vdash,
                                      time, -1, 'LIM')
                 list_order.append(second_order)
@@ -570,7 +577,7 @@ class Liqudity_consumer(Trader):
 
     def __init__(self, ttype, tid, balance, time):
         Trader.__init__(self, ttype, tid, balance, time)
-        self.lc_rand = 0.1
+        self.lc_rand = 0.05
         self.moving_average = 0
         self.total_volume = 10
         self.remainding_volume = 10
@@ -589,7 +596,7 @@ class Liqudity_consumer(Trader):
         else:
 
             if self.first_call:
-                initial_quantity = int(numpy.random.uniform(1,10))
+                initial_quantity = int(numpy.random.uniform(1,20))
 
                 if random.random() > 0.5:
                     #BUY
@@ -773,6 +780,7 @@ class Mean_Reversion(Trader):
                 if order != None:
                     order_submit.append(order)
                     print("_______ MEAN_R _______ submits : " + str(order))
+                    self.lastquote = order
                     return order_submit, []
 
         return order_submit, []
@@ -781,7 +789,7 @@ class Mean_Reversion(Trader):
 class Noise_Trader(Trader):
     def __init__(self, ttype, tid, balance, time):
         Trader.__init__(self, ttype, tid, balance, time)
-        self.nt = 0.4
+        self.nt = 0.8
         self.task = 'asks'
         self.cap_task = 'Ask'
         self.last_order = None
@@ -795,121 +803,144 @@ class Noise_Trader(Trader):
     def getorder(self, time, countdown, lob):
         order_array = []
         del_array = []
-        if len(self.orders) > 0:
-            if random.random() < 0.4:
-                if random.random() < 0.5:
-                    self.task = 'asks'
-                    self.cap_task = 'Ask'
-                else:
-                    self.task = 'bids'
-                    self.cap_task = 'Bid'
+        # if len(self.orders) > 0:
+        if random.random() < self.nt:
+            if random.random() < 0.5:
+                self.task = 'asks'
+                self.cap_task = 'Ask'
+            else:
+                self.task = 'bids'
+                self.cap_task = 'Bid'
 
-                alpha_random = numpy.random.dirichlet(numpy.ones(3), size=1)
-                alpha_sam = numpy.random.uniform(0, 1)
-                alpha_m = alpha_random[0][0]
-                alpha_l = alpha_random[0][1]
-                alpha_c = alpha_random[0][1]
+            alpha_random = numpy.random.dirichlet(numpy.ones(3), size=1)
+            alpha_sam = numpy.random.uniform(0, 1)
+            alpha_m = 0.03
+            alpha_l = 0.54
+            alpha_c = 0.43
 
-                # by sampling from dirichlet, the sum of these numbers will be 1
-                list_random_prob = numpy.random.dirichlet(numpy.ones(4),size=1)
-                crs = list_random_prob[0][0]
-                inspr = list_random_prob[0][1]
-                spr = list_random_prob[0][2]
-                ospr = list_random_prob[0][3]
+            # by sampling from dirichlet, the sum of these numbers will be 1
+            list_random_prob = numpy.random.dirichlet(numpy.ones(4),size=1)
+            crs = 0.0032
+            inspr = 0.0978
+            spr = 0.1726
+            ospr = 0.7264
 
-                # sampling to determine which cases to go to
-                sample = numpy.random.uniform(0,1)
+            # sampling to determine which cases to go to
+            sample = numpy.random.uniform(0,1)
 
-                # quantity by sampling from lognormal distribution
-                mean = numpy.random.uniform(2, 10)
-                sd = numpy.random.uniform(0, 1)
+            # quantity by sampling from lognormal distribution
+            mean = numpy.random.uniform(2, 10)
+            sd = numpy.random.uniform(0, 1)
+            offset_uv = numpy.random.uniform(0, 1)
+
+            quantity = round(math.pow(math.e, mean + (sd * offset_uv)))
+
+            # from numpy
+            # quantity = numpy.random.lognormal(mean,sd)
+
+            # market order
+            print("___ NOISE ___ ")
+            if alpha_sam <= alpha_m:
+                print("NOISE_MKT")
+                mean = 7
+                sd = 0.1
                 offset_uv = numpy.random.uniform(0, 1)
 
                 quantity = round(math.pow(math.e, mean + (sd * offset_uv)))
 
-                # from numpy
-                # quantity = numpy.random.lognormal(mean,sd)
+                order = Order(self.tid,
+                                  self.cap_task,
+                                  lob[self.task]['worst'],
+                                  quantity,
+                                  time, -1, 'MKT')
+                order_array.append(order)
+                self.last_order = order
+                print("NOISE TRADER : Submit Market order : " + str(order))
 
+            elif alpha_sam > alpha_m and alpha_sam <= alpha_l:
+                mean = 8
+                sd = 0.7
+                offset_uv = numpy.random.uniform(0, 1)
 
-                if alpha_sam <= alpha_m:
+                quantity = round(math.pow(math.e, mean + (sd * offset_uv)))
+
+                print("Submit Limit order")
+                # from equation
+                # Crossing limit order
+                if sample > 0 and sample <= crs:
+                    print("CROSSING")
+                    if lob[self.task]['best'] != None:
+                        price  =  lob[self.task]['best']
+                    else:
+                        # price = lob[self.task]['worst']
+                        price = 100
                     order = Order(self.tid,
-                                      self.cap_task,
-                                      lob[self.task]['worst'],
-                                      quantity,
-                                      time, -1, 'MKT')
+                                  self.cap_task,
+                                  price,
+                                  quantity,
+                                  time, -1, 'LIM')
                     order_array.append(order)
                     self.last_order = order
-                    print("NOISE TRADER : Submit Market order : " + str(order))
 
-                elif alpha_sam > alpha_m and alpha_sam <= alpha_l:
-                    print("Submit Limit order")
-                    # from equation
-                    # Crossing limit order
-                    if sample > 0 and sample <= crs:
-                        if lob[self.task]['best'] != None:
-                            price  =  lob[self.task]['best']
-                        else:
-                            price = lob[self.task]['worst']
-                        order = Order(self.tid,
-                                      self.cap_task,
-                                      price,
-                                      quantity,
-                                      time, -1, 'LIM')
-                        order_array.append(order)
-                        self.last_order = order
-
-                    # Inside spread limit order
-                    elif sample > crs and sample <= crs + inspr:
-                        if lob['asks']['best'] != None and lob['bids']['best'] != None:
-                            price = numpy.random.uniform(lob['bids']['best'], lob['asks']['best'])
-                        else:
-                            price = numpy.random.uniform(lob['bids']['worst'], lob['asks']['worst'])
-                        order = Order(self.tid,
-                                      self.cap_task,
-                                      price,
-                                      quantity,
-                                      time, -1, 'LIM')
-                        order_array.append(order)
-                        self.last_order = order
-
-                    # Spread limit order
-                    elif sample > crs + inspr and sample <= crs + inspr + crs:
-                        if(lob[self.task]['best'] != None):
-                            price = lob[self.task]['best']
-                        else:
-                            price = lob[self.task]['worst']
-                        order = Order(self.tid,
-                                      self.cap_task,
-                                      price,
-                                      quantity,
-                                      time, -1, 'LIM')
-                        order_array.append(order)
-                        self.last_order = order
-                    # Off-spread limit order
+                # Inside spread limit order
+                elif sample > crs and sample <= crs + inspr:
+                    print("ISLO")
+                    if lob['asks']['best'] != None and lob['bids']['best'] != None:
+                        price = numpy.random.uniform(lob['bids']['best'], lob['asks']['best'])
                     else:
-                        # Generate a random value, poffspr using Equation 8
-                        # Submit order at a price poffspr outside of spread using Equation 7.
-                        offset_uO = numpy.random.uniform(0, 1)
-                        xmin = numpy.random.uniform(0, 1)
-                        Beta = numpy.random.uniform(0, 1)
-                        price = xmin * math.pow(1 - offset_uO, -(1/(Beta - 1)))
-                        order = Order(self.tid,
-                                      self.cap_task,
-                                      price,
-                                      quantity,
-                                      time, -1, 'LIM')
-                        order_array.append(order)
-                        self.last_order = order
+                        # price = numpy.random.uniform(lob['bids']['worst'], lob['asks']['worst'])
+                        # MCG Price
+                        price = 100 + 0.05
+                    order = Order(self.tid,
+                                  self.cap_task,
+                                  price,
+                                  quantity,
+                                  time, -1, 'LIM')
+                    order_array.append(order)
+                    self.last_order = order
 
+                # Spread limit order
+                elif sample > crs + inspr and sample <= crs + inspr + crs:
+                    print("SPO")
+                    if(lob[self.task]['best'] != None):
+                        price = lob[self.task]['best']
+                    else:
+                        # price = lob[self.task]['worst']
+                        price = 100
+                    order = Order(self.tid,
+                                  self.cap_task,
+                                  price,
+                                  quantity,
+                                  time, -1, 'LIM')
+                    order_array.append(order)
+                    self.last_order = order
+                # Off-spread limit order
                 else:
-                    if self.last_order != None:
-                        print("NOISE TRADER : Cancel Order : " + str(self.last_order))
-                        del_array.append(self.last_order)
-                        self.del_order(self.last_order,self.last_order.qty)
-                        self.last_order = None
+                    print("______ OFFSPR ________ ")
+                    # Generate a random value, poffspr using Equation 8
+                    # Submit order at a price poffspr outside of spread using Equation 7.
+                    offset_uO = numpy.random.uniform(0, 1)
+                    xmin = 0.05
+                    Beta = 2.72
+                    price = xmin * math.pow(1 - offset_uO, -(1/(Beta - 1)))
+                    order = Order(self.tid,
+                                  self.cap_task,
+                                  price,
+                                  quantity,
+                                  time, -1, 'LIM')
+                    order_array.append(order)
+                    print("OFFSPR _ PRICE : " + str(price))
+                    self.last_order = order
 
-            if order_array != []:
-                print("NOISE SUBMIT : " + str(order_array[0]))
+            else:
+                if self.last_order != None:
+                    print("NOISE TRADER : Cancel Order : " + str(self.last_order))
+                    del_array.append(self.last_order)
+                    self.del_order(self.last_order,self.last_order.qty)
+                    self.last_order = None
+
+        if order_array != []:
+            print("NOISE SUBMIT : " + str(order_array[0]))
         return order_array, del_array
 
 class Simple_Buyer(Trader):

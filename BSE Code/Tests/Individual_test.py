@@ -10,78 +10,212 @@ class Test_Trader_Methods(unittest.TestCase):
     def setUp(self):
         pass
 
-    def test_delete_best_qid01(self):
-        bookhalf = Orderbook_half('Ask', 100)
-        order01 = Order('T01', 'Ask', 3, 3, 1, 101, 'LIM')
-        order02 = Order('T02', 'Ask', 5, 1, 1, 102, 'LIM')
-        bookhalf.book_add(order01)
-        bookhalf.book_add(order02)
-        counter_party, order_qid, del_in_trader = bookhalf.delete_best()
-        self.assertEqual(bookhalf.lob, collections.OrderedDict([(5, [1, [[1, 1, 'T02', 102]]]), (3, [2, [[1, 2, 'T01', 101]]])]))
-        self.assertEqual(bookhalf.n_orders, 2)
-        self.assertEqual(bookhalf.best_qty, 2)
-        self.assertEqual(bookhalf.best_price, 3)
-        self.assertEqual(order_qid, 101)
-        self.assertEqual(del_in_trader, False)
-
-    def test_delete_best_qid02(self):
-        bookhalf = Orderbook_half('Ask', 100)
-        order02 = Order('T02', 'Ask', 5, 1, 1, 102, 'LIM')
-        bookhalf.book_add(order02)
-        counter_party, order_qid, del_in_trader = bookhalf.delete_best()
-        self.assertEqual(bookhalf.n_orders, 0)
-        self.assertEqual(bookhalf.best_qty, 0)
-        self.assertEqual(order_qid, 102)
-        self.assertEqual(del_in_trader, True)
-
-    def test_delete_best_qid03(self):
-        bookhalf = Orderbook_half('Ask', 100)
-        order01 = Order('T01', 'Ask', 3, 1, 1, 101, 'LIM')
-        order02 = Order('T02', 'Ask', 5, 1, 1, 102, 'LIM')
-        bookhalf.book_add(order01)
-        bookhalf.book_add(order02)
-        counter_party, order_qid, del_in_trader = bookhalf.delete_best()
-        self.assertEqual(bookhalf.n_orders, 1)
-        self.assertEqual(bookhalf.best_price, 5)
-        self.assertEqual(order_qid, 101)
-        self.assertEqual(del_in_trader, True)
-
-    def test_dec_order_01(self):
-        bookhalf = Orderbook_half('asks', 100)
-        order01 = Order('T01', 'ASK', 3, 1, 1, 0, 'LIM')
-        order02 = Order('T02', 'ASK', 5, 1, 1, 0, 'LIM')
-        bookhalf.book_add(order01)
-        bookhalf.book_add(order02)
-        del_in_order = bookhalf.decrement_order(3,'T01')
-        self.assertEqual(bookhalf.best_qty, 1)
-        self.assertEqual(collections.OrderedDict([(5, [1, [[1, 1, 'T02', 0]]])]),
-                         bookhalf.lob)
-        self.assertEqual(del_in_order, True)
-
-    def test_dec_order_02(self):
-        bookhalf = Orderbook_half('bids', 100)
-        order01 = Order('T01', 'Bid', 3, 2, 1, 0, 'LIM')
-        order02 = Order('T02', 'Bid', 5, 1, 1, 0, 'LIM')
-        bookhalf.book_add(order01)
-        bookhalf.book_add(order02)
-        del_in_order = bookhalf.decrement_order(3,'T01')
-        self.assertEqual(bookhalf.best_qty, 1)
-        self.assertEqual(collections.OrderedDict([(5, [1, [[1, 1, 'T02', 0]]]), (3, [1, [[1, 1, 'T01', 0]]])]), bookhalf.lob)
-        self.assertEqual(del_in_order, False)
-    #
-    def test_process_MKT04(self):
-        # party1 = the one whose order is already on the LOB
-        # party2 = the one who submitted the order
+    def test_delete_best(self):
         exchange = Exchange()
-        exchange.asks = Orderbook_half('asks', 1)
-        exchange.bids = Orderbook_half('bids', 100)
-        order01 = Order('T01', 'Ask', 3, 3, 1, 101, 'LIM')
-        order03 = Order('T02', 'Bid', 5, 2, 1, 102, 'LIM')
-        exchange.asks.book_add(order01)
-        transac, qty = exchange.process_order2(2, order03, False, [], [])
-        self.assertEqual(qty, 2)
+        exchange.asks = Orderbook_half('Ask', 1)
+        exchange.bids = Orderbook_half('Bid', 100)
+        order01 = Order('T01', 'Ask', 3, 5, 1, 0, 'LIM')
+        order03 = Order('T02', 'Ask', 5, 2, 1, 0, 'LIM')
+        order02 = Order('T03', 'Bid', 6, 10, 1, 0, 'LIM')
+        exchange.add_order(order01, False)
+        exchange.add_order(order03, False)
+        best_price_counterparty, order_del_qid, del_in_trader, trade_price, quantity_decremented = exchange.asks.delete_best(order02.tid, order02.qty)
+        self.assertEqual(quantity_decremented, 5)
         self.assertEqual(exchange.asks.n_orders, 1)
+        self.assertEqual(trade_price, 3)
+
+    def test_delete_best_ask02(self):
+        exchange = Exchange()
+        exchange.asks = Orderbook_half('Ask', 1)
+        exchange.bids = Orderbook_half('Bid', 100)
+        order01 = Order('T01', 'Ask', 3, 5, 1, 0, 'LIM')
+        order03 = Order('T02', 'Ask', 5, 2, 1, 0, 'LIM')
+        order02 = Order('T03', 'Bid', 6, 2, 1, 0, 'LIM')
+        exchange.add_order(order01, False)
+        exchange.add_order(order03, False)
+        best_price_counterparty, order_del_qid, del_in_trader, trade_price, quantity_decremented = exchange.asks.delete_best(
+            order02.tid, order02.qty)
+        self.assertEqual(quantity_decremented, 2)
+        self.assertEqual(exchange.asks.n_orders, 2)
+        self.assertEqual(trade_price, 3)
+
+    def test_delete_best_ask03(self):
+        exchange = Exchange()
+        exchange.asks = Orderbook_half('Ask', 1)
+        exchange.bids = Orderbook_half('Bid', 100)
+        order01 = Order('T01', 'Ask', 3, 5, 1, 0, 'LIM')
+        order03 = Order('T02', 'Ask', 5, 1, 1, 0, 'LIM')
+        order02 = Order('T01', 'Bid', 6, 2, 1, 0, 'LIM')
+        exchange.add_order(order01, False)
+        exchange.add_order(order03, False)
+        best_price_counterparty, order_del_qid, del_in_trader, trade_price, quantity_decremented = exchange.asks.delete_best(
+            order02.tid, order02.qty)
+        self.assertEqual(quantity_decremented, 1)
+        self.assertEqual(exchange.asks.n_orders, 1)
+        self.assertEqual(trade_price, 5)
+
+
+    def test_delete_best_bid01(self):
+        exchange = Exchange()
+        exchange.asks = Orderbook_half('Ask', 1)
+        exchange.bids = Orderbook_half('Bid', 100)
+        order01 = Order('T01', 'Bid', 3, 5, 1, 0, 'LIM')
+        order03 = Order('T02', 'Bid', 5, 2, 1, 0, 'LIM')
+        order02 = Order('T03', 'Ask', 2, 10, 1, 0, 'LIM')
+        exchange.add_order(order01, False)
+        exchange.add_order(order03, False)
+        best_price_counterparty, order_del_qid, del_in_trader, trade_price, quantity_decremented = exchange.bids.delete_best(order02.tid, order02.qty)
+        self.assertEqual(quantity_decremented, 2)
+        self.assertEqual(exchange.bids.n_orders, 1)
+        self.assertEqual(trade_price, 5)
+
+    def test_delete_best_bid02(self):
+        exchange = Exchange()
+        exchange.asks = Orderbook_half('Ask', 1)
+        exchange.bids = Orderbook_half('Bid', 100)
+        order01 = Order('T01', 'Bid', 3, 5, 1, 0, 'LIM')
+        order03 = Order('T02', 'Bid', 5, 10, 1, 0, 'LIM')
+        order02 = Order('T03', 'Ask', 2, 3, 1, 0, 'LIM')
+        exchange.add_order(order01, False)
+        exchange.add_order(order03, False)
+        best_price_counterparty, order_del_qid, del_in_trader, trade_price, quantity_decremented = exchange.bids.delete_best(order02.tid, order02.qty)
+        self.assertEqual(quantity_decremented, 3)
+        self.assertEqual(exchange.bids.n_orders, 2)
+        self.assertEqual(trade_price, 5)
+
+    # test order from same agent also in LOB
+    def test_delete_best_bid03(self):
+        exchange = Exchange()
+        exchange.asks = Orderbook_half('Ask', 1)
+        exchange.bids = Orderbook_half('Bid', 100)
+        order01 = Order('T02', 'Bid', 3, 2, 1, 0, 'LIM')
+        order03 = Order('T01', 'Bid', 5, 10, 1, 0, 'LIM')
+        order02 = Order('T01', 'Ask', 2, 3, 1, 0, 'LIM')
+        exchange.add_order(order01, False)
+        exchange.add_order(order03, False)
+        best_price_counterparty, order_del_qid, del_in_trader, trade_price, quantity_decremented = exchange.bids.delete_best(order02.tid, order02.qty)
+        self.assertEqual(quantity_decremented, 2)
+        self.assertEqual(exchange.bids.n_orders, 1)
+        self.assertEqual(trade_price, 3)
+    #
+    #integration test
+    def test_processOrder_exchange_bid(self):
+        exchange = Exchange()
+        exchange.asks = Orderbook_half('Ask', 1)
+        exchange.bids = Orderbook_half('Bid', 100)
+        order01 = Order('T01', 'Bid', 13, 1, 1, 0, 'LIM')
+        order03 = Order('T02', 'Bid', 15, 2, 1, 0, 'LIM')
+        exchange.add_order(order01, False)
+        exchange.add_order(order03, False)
+        order02 = Order('T03', 'Ask', 6, 10, 1, 0, 'LIM')
+        transac, actual = exchange.process_order2(12, order02, False, [], [])
+        self.assertEqual(exchange.asks.best_qty, 7)
         self.assertEqual(exchange.bids.n_orders, 0)
+        self.assertEqual(transac[0]['party1'], 'T02')
+        self.assertEqual(transac[1]['party1'], 'T01')
+        self.assertEqual(actual, 3)
+    #
+    #integration test
+    def test_processOrder_exchange_ask(self):
+        exchange = Exchange()
+        exchange.asks = Orderbook_half('Ask', 1)
+        exchange.bids = Orderbook_half('Bid', 100)
+        order01 = Order('T01', 'Ask', 3, 1, 1, 0, 'LIM')
+        order03 = Order('T02', 'Ask', 5, 2, 1, 0, 'LIM')
+        exchange.add_order(order01, False)
+        exchange.add_order(order03, False)
+        order02 = Order('T03', 'Bid', 6, 10, 1, 0, 'LIM')
+        transac, actual = exchange.process_order2(12, order02, False, [], [])
+        self.assertEqual(exchange.bids.best_qty, 7)
+        self.assertEqual(exchange.bids.best_price, 6)
+        self.assertEqual(exchange.bids.n_orders, 1)
+        self.assertEqual(exchange.asks.n_orders, 0)
+        self.assertEqual(transac[0]['party1'], 'T01')
+        self.assertEqual(transac[0]['qty'], 1)
+        self.assertEqual(transac[1]['party1'], 'T02')
+        self.assertEqual(transac[1]['qty'], 2)
+        self.assertEqual(actual, 3)
+    #
+    #integration test
+    def test_processOrder_exchange_MKT01(self):
+        exchange = Exchange()
+        exchange.asks = Orderbook_half('Ask', 1)
+        exchange.bids = Orderbook_half('Bid', 100)
+        order01 = Order('T01', 'Ask', 3, 5, 1, 0, 'LIM')
+        order03 = Order('T02', 'Ask', 5, 2, 1, 0, 'LIM')
+        exchange.add_order(order01, False)
+        exchange.add_order(order03, False)
+        order02 = Order('T03', 'Bid', 6, 10, 1, 0, 'MKT')
+        transac, actual = exchange.process_order2(12, order02, False, [], [])
+        self.assertEqual(exchange.bids.best_qty, 0)
+        self.assertEqual(exchange.bids.n_orders, 0)
+        self.assertEqual(exchange.asks.n_orders, 0)
+        self.assertEqual(transac[0]['party1'], 'T01')
+        self.assertEqual(transac[0]['qty'], 5)
+        self.assertEqual(transac[1]['party1'], 'T02')
+        self.assertEqual(transac[1]['qty'], 2)
+        self.assertEqual(actual, 7)
+
+    #integration test
+    def test_processOrder_exchange_MKT02(self):
+        exchange = Exchange()
+        exchange.asks = Orderbook_half('Ask', 1)
+        exchange.bids = Orderbook_half('Bid', 100)
+        order01 = Order('T01', 'Bid', 13, 3, 1, 0, 'LIM')
+        order03 = Order('T02', 'Bid', 15, 2, 1, 0, 'LIM')
+        exchange.add_order(order01, False)
+        exchange.add_order(order03, False)
+        order02 = Order('T03', 'Ask', 6, 10, 1, 0, 'MKT')
+        transac, actual = exchange.process_order2(12, order02, False, [], [])
+        self.assertEqual(exchange.bids.best_qty, 0)
+        self.assertEqual(exchange.bids.n_orders, 0)
+        self.assertEqual(exchange.asks.n_orders, 0)
+        self.assertEqual(transac[0]['party1'], 'T02')
+        self.assertEqual(transac[0]['qty'], 2)
+        self.assertEqual(transac[1]['party1'], 'T01')
+        self.assertEqual(transac[1]['qty'], 3)
+        self.assertEqual(actual, 5)
+
+    #integration test
+    def test_processOrder_exchange_MKT03(self):
+        exchange = Exchange()
+        exchange.asks = Orderbook_half('Ask', 1)
+        exchange.bids = Orderbook_half('Bid', 100)
+        order02 = Order('T03', 'Ask', 6, 10, 1, 0, 'MKT')
+        transac, actual = exchange.process_order2(12, order02, False, [], [])
+        self.assertEqual(exchange.bids.best_qty, 0)
+        self.assertEqual(exchange.bids.n_orders, 0)
+        self.assertEqual(exchange.asks.n_orders, 0)
+        self.assertEqual(len(transac), 0)
+        self.assertEqual(actual, 0)
+
+    #integration test
+    def test_processOrder_exchange_MKT04(self):
+        exchange = Exchange()
+        exchange.asks = Orderbook_half('Ask', 1)
+        exchange.bids = Orderbook_half('Bid', 100)
+        order02 = Order('T03', 'Ask', 6, 10, 1, 0, 'LIM')
+        transac, actual = exchange.process_order2(12, order02, False, [], [])
+        self.assertEqual(exchange.bids.best_qty, 0)
+        self.assertEqual(exchange.bids.n_orders, 0)
+        self.assertEqual(exchange.asks.n_orders, 1)
+        self.assertEqual(len(transac), 0)
+        self.assertEqual(actual, 0)
+
+    # #integration test
+    # def test_processOrder_exchange_MKT05(self):
+    #     exchange = Exchange()
+    #     exchange.asks = Orderbook_half('Ask', 1)
+    #     exchange.bids = Orderbook_half('Bid', 100)
+    #     order02 = Order('T03', 'Ask', 6, 10, 1, 0, 'MKT')
+    #     transac, actual = exchange.process_order2(12, order02, False, [], [])
+    #     self.assertEqual(exchange.bids.best_qty, 0)
+    #     self.assertEqual(exchange.bids.n_orders, 0)
+    #     self.assertEqual(exchange.asks.n_orders, 0)
+    #     self.assertEqual(len(transac), 0)
+    #     self.assertEqual(actual, 0)
+
+
 
 
 
