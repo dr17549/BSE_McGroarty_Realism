@@ -22,7 +22,7 @@ class Test_McG_MM(unittest.TestCase):
         market01 = Market_Maker('MM', 'T01', 0.00, 0)
         market01.beta_random = 1
         orders, del_orders = market01.getorder(10,2,lob)
-        self.assertEqual(len(orders), 0)
+        self.assertEqual(len(orders), 2)
         self.assertEqual(len(del_orders), 0)
 
     def test_mm_getorder_empty02(self):
@@ -36,7 +36,7 @@ class Test_McG_MM(unittest.TestCase):
         market01 = Market_Maker('MM', 'T01', 0.00, 0)
         market01.beta_random = 1
         orders, del_orders = market01.getorder(10,2,lob)
-        self.assertEqual(len(orders), 0)
+        self.assertEqual(len(orders), 2)
         self.assertEqual(len(del_orders), 0)
 
     def test_mm_getorder_asklob(self):
@@ -138,26 +138,12 @@ class Test_Momentum_Trader(unittest.TestCase):
         market01.mt_rand = 1
         orders, del_orders = market01.getorder(20, 2, lob)
         self.assertEqual(len(orders) == 0, True)
-
+#
 class Test_MeanR_Trader(unittest.TestCase):
 
     def setUp(self):
         pass
-
-    def test_add_and_best_price(self):
-        bookhalf = Orderbook_half('Bid', 100)
-        order01 = Order('T01', 'Bid', 103, 3, 1, 0, 'LIM')
-        order02 = Order('T02', 'Bid', 105, 1, 1, 0, 'LIM')
-        bookhalf.book_add(order01)
-        bookhalf.book_add(order02)
-        bookhalf.delete_best()
-        self.assertEqual(bookhalf.best_qty, 3)
-        self.assertEqual(bookhalf.n_orders, 1)
-        order03 = Order('T03', 'Bid', 110, 3, 1, 0, 'LIM')
-        bookhalf.book_add(order03)
-        self.assertEqual(bookhalf.best_price, 110)
-        print(bookhalf.lob)
-
+#
     def test_mr_getorder_00(self):
         exchange = Exchange()
         exchange.asks = Orderbook_half('asks', 1)
@@ -178,19 +164,6 @@ class Test_MeanR_Trader(unittest.TestCase):
         self.assertEqual(len(orders) > 0, True)
         self.assertEqual(orders[0].qty , 1)
         self.assertEqual( orders[0].price , 10)
-
-    def test_mr_getorder_01(self):
-        exchange = Exchange()
-        exchange.asks = Orderbook_half('asks', 1)
-        exchange.bids = Orderbook_half('bids', 100)
-        lob = exchange.publish_lob(1, False)
-
-        market01 = Mean_Reversion('MR', 'T01', 0.00, 0)
-        market01.mr = 1
-        tempord = Order('T01', 'Ask', 10, 1, 1, 0, 'LIM')
-        market01.add_order(tempord, False)
-        orders, del_orders = market01.getorder(20, 2, lob)
-        self.assertEqual(len(orders) == 0, True)
 
     def test_mr_getorder_02(self):
         exchange = Exchange()
@@ -252,7 +225,7 @@ class Test_MeanR_Trader(unittest.TestCase):
         orders01, del_orders01 = market01.getorder(30, 2, lob)
         self.assertEqual(len(orders01) > 0, True)
         self.assertEqual(orders01[0].otype, 'Bid')
-        self.assertEqual(round(market01.ema, 1), 6.2)
+        self.assertEqual(round(market01.ema, 1), 6.7)
 
 
 if __name__ == '__main__':

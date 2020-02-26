@@ -136,6 +136,12 @@ class Exchange(Orderbook):
                         remaining_quantity = order.qty
                         while remaining_quantity > 0 and self.asks.n_orders > 0:
 
+                            if self.asks.n_orders == 1 and order.tid == self.asks.lob[self.asks.best_price][1][0][2]:
+                                break
+
+                            elif order.tid == self.asks.lob[self.asks.best_price][1][0][2] and best_bid < list(self.asks.lob)[1]:
+                                break
+
                             cp, cp_order_qid, cp_del_in_trader, trade_price, quantity_dec = self.asks.delete_best(order.tid,remaining_quantity)
 
                             party_del_in_trader = self.bids.decrement_order(oprice, order.tid, quantity_dec)
@@ -145,6 +151,7 @@ class Exchange(Orderbook):
 
                             remaining_quantity = remaining_quantity - quantity_dec
                             order_quantity = original_quantity - remaining_quantity
+
 
             else:
                 # if False:
@@ -158,6 +165,11 @@ class Exchange(Orderbook):
                         remaining_quantity = order.qty
                         while remaining_quantity > 0 and self.bids.n_orders > 0:
 
+                            if self.bids.n_orders == 1 and order.tid == self.bids.lob[self.bids.best_price][1][0][2]:
+                                break
+                            elif order.tid == self.bids.lob[self.bids.best_price][1][0][2] and best_ask > list(self.bids.lob)[1]:
+                                break
+
                             cp, cp_order_qid, cp_del_in_trader, trade_price, quantity_dec = self.bids.delete_best(order.tid,remaining_quantity)
 
                             party_del_in_trader = self.asks.decrement_order(oprice, order.tid, quantity_dec)
@@ -166,6 +178,7 @@ class Exchange(Orderbook):
 
                             remaining_quantity = remaining_quantity - quantity_dec
                             order_quantity = original_quantity - remaining_quantity
+
 
         # market order takes anything with the given quantity at any price
         elif order.ostyle == 'MKT':

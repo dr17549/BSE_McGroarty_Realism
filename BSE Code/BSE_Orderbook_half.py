@@ -278,6 +278,7 @@ class Orderbook_half:
                         del (self.orders[best_price_counterparty])
                         self.n_orders = self.n_orders - 1
                         # print("$$$$$ DEC == 1-- ORDER N : " + str(self.n_orders))
+                        print("LOB : " + str(self.lob))
                         if self.n_orders > 0:
                                 if self.booktype == 'Bid':
                                         self.best_price = max(self.lob.keys())
@@ -300,7 +301,7 @@ class Orderbook_half:
                         for agent_submitted in range(len(self.lob[price][1])):
                                 if self.lob[price][1][agent_submitted][2] == best_price_counterparty:
                                         trade_quantity_before_dec = self.lob[price][1][agent_submitted][1]
-                                        if self.lob[price][1][agent_submitted][1] == 1:
+                                        if self.lob[price][1][agent_submitted][1] == quantity_decremented:
                                                 if verbose:
                                                         print("DEC ORDER DEL " + str(self.lob[price][1][agent_submitted]))
                                                         print("BEFORE : " + str(self.lob))
@@ -320,9 +321,9 @@ class Orderbook_half:
                         #decrement quantity overall
                         self.lob[price][0] -= 1
                         self.best_qty -= quantity_decremented
-                        # print(" > 1 $$$$$$ DEC -- ORDER N : " + str(self.n_orders))
-                        # Decrement the overall quantity - not correct !!
-                        if trade_quantity_before_dec > 1:
+
+
+                        if trade_quantity_before_dec > quantity_decremented:
                                 # self.orders[best_price_counterparty].qty -= 1
                                 change_qty = self.orders[best_price_counterparty].qty
                                 self.orders[best_price_counterparty].qty = change_qty - quantity_decremented

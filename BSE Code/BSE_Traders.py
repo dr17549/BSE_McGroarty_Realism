@@ -745,43 +745,42 @@ class Mean_Reversion(Trader):
 
     def getorder(self, time, countdown, lob):
         order_submit = []
-        if len(self.orders) > 0:
-            # print("MEAN REVERSED SUBMITTED ORDER")
-            if lob['asks']['best'] != None and lob['bids']['best'] != None:
-                current_price = (lob['asks']['best'] + lob['bids']['best']) / 2
-                self.price_movement.append(current_price)
-                best_price_ask = lob['asks']['best']
-                best_price_bid = lob['bids']['best']
-                if len(self.price_movement) > 1:
-                    sd_value = statistics.stdev(self.price_movement)
+
+        if lob['asks']['best'] != None and lob['bids']['best'] != None:
+            current_price = (lob['asks']['best'] + lob['bids']['best']) / 2
+            self.price_movement.append(current_price)
+            best_price_ask = lob['asks']['best']
+            best_price_bid = lob['bids']['best']
+            if len(self.price_movement) > 1:
+                sd_value = statistics.stdev(self.price_movement)
+            else:
+                sd_value = 0
+            orderstyle = 'LIM'
+            random_var = random.random()
+            order = None
+            if random_var < self.mr:
+                if current_price - self.ema >= ( self.k_ceta * sd_value) :
+                    order = Order(self.tid,
+                                      'Ask',
+                                      best_price_bid,
+                                      self.quantity_vr,
+                                      time, -1, orderstyle)
                 else:
-                    sd_value = 0
-                orderstyle = 'LIM'
-                random_var = random.random()
-                order = None
-                if random_var < self.mr:
-                    if current_price - self.ema >= ( self.k_ceta * sd_value) :
+                    if self.ema - current_price >= (self.k_ceta * sd_value):
                         order = Order(self.tid,
-                                          'Ask',
-                                          best_price_bid,
-                                          self.quantity_vr,
-                                          time, -1, orderstyle)
-                    else:
-                        if self.ema - current_price >= (self.k_ceta * sd_value):
-                            order = Order(self.tid,
-                                          'Bid',
-                                          best_price_ask,
-                                          self.quantity_vr,
-                                          time, -1, orderstyle)
+                                      'Bid',
+                                      best_price_ask,
+                                      self.quantity_vr,
+                                      time, -1, orderstyle)
 
-                # update the exponential moving avg
-                self.ema = self.ema + (self.discount_offset * (current_price - self.ema))
+            # update the exponential moving avg
+            self.ema = self.ema + (self.discount_offset * (current_price - self.ema))
 
-                if order != None:
-                    order_submit.append(order)
-                    print("_______ MEAN_R _______ submits : " + str(order))
-                    self.lastquote = order
-                    return order_submit, []
+            if order != None:
+                order_submit.append(order)
+                print("_______ MEAN_R _______ submits : " + str(order))
+                self.lastquote = order
+                return order_submit, []
 
         return order_submit, []
 

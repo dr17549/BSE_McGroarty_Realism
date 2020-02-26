@@ -56,6 +56,7 @@ from BSE_Customer_Order import customer_orders
 ticksize = 1  # minimum change in price, in cents/pennies
 
 
+import csv
 
 # one session in the market
 def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dumpfile, dump_each_trade, verbose):
@@ -88,6 +89,7 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dum
         inside_trade_verbose = False
         mcg_names = ['MARKET_M', "LIQ", "NOISE", "MOMENTUM", "MEAN_R"]
 
+        personal_print = []
         pending_cust_orders = []
 
         switch = 0
@@ -321,6 +323,9 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dum
 
                                                 for trade in transac_record:
 
+                                                        if traders[trade['party1']].ttype == 'MEAN_R' or traders[trade['party2']].ttype == 'MEAN_R':
+                                                                personal_print.append([time, trade['price']])
+
                                                         if inside_trade_verbose:
                                                                 print("^^^^^^ ORDER TRADED BETWEEN SUBMITTED : " + str(tid) + " CLIENT : " + str(trade['party2']) +
                                                                       " PRICE : " + str(trade['price']) + " Original QTY : " + str(order.qty))
@@ -407,8 +412,8 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dum
                         #                         for p_order in traders[order[2]].orders:
                         #                                 print(p_order)
                         #                         sys.exit("Order in the trader and order in the LOB does not match")
-                        # __________________________________________________________________________
-
+                        # # __________________________________________________________________________
+                        #
                         # for temp_id in list(traders.keys()):
                         #         for temp_ord in traders[temp_id].orders:
                         #                 if temp_ord.qid > 0 and traders[temp_id].ttype in mcg_names:
@@ -442,12 +447,17 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dum
         print("END OF TRANSACTION DAY")
         # end of an experiment -- dump the tape
         exchange.tape_dump('transaction.csv', 'w', 'keep')
+        print_trader_type_transac(personal_print)
 
 
         # write trade_stats for this experiment NB end-of-session summary only
         trade_stats(sess_id, traders, tdump, time, exchange.publish_lob(time, lob_verbose))
 
 
+def print_trader_type_transac(row_list):
+        with open('specific_type.csv', 'w', newline='') as file:
+                writer = csv.writer(file)
+                writer.writerows(row_list)
 
 #############################
 
@@ -459,7 +469,7 @@ if __name__ == "__main__":
         # set up parameters for the session
 
         start_time = 0.0
-        end_time = 600.0
+        end_time = 1000.0
         duration = end_time - start_time
 
 
@@ -513,11 +523,11 @@ if __name__ == "__main__":
         min_n = 1
 
         trialnumber = 1
-        buyers_spec = [('LIQ', 0), ('GVWY', 0),
-                                                       ('SMB', 0), ('MOMENTUM', 0), ('MARKET_M', 0),('MEAN_R', 0),('NOISE', 4)]
+        buyers_spec = [('LIQ', 0), ('GVWY', 4),
+                                                       ('SMB', 0), ('MOMENTUM', 0), ('MARKET_M', 0),('MEAN_R', 4),('NOISE', 0)]
         # sellers_spec = buyers_spec
-        sellers_spec = [('LIQ', 0), ('GVWY', 0),
-                                                       ('SMS', 0), ('MOMENTUM', 0), ('MARKET_M', 0),('MEAN_R', 0),('NOISE', 4)]
+        sellers_spec = [('LIQ', 0), ('GVWY', 4),
+                                                       ('SMS', 0), ('MOMENTUM', 0), ('MARKET_M', 0),('MEAN_R', 4),('NOISE', 0)]
         traders_spec = {'sellers':sellers_spec, 'buyers':buyers_spec}
 
 
