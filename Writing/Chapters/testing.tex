@@ -1,0 +1,30 @@
+In order to ensure the integrity of the new BSE that have been implemented, a certain number of tests must be done. 
+
+\section{Unit Testing} 
+Unit testing aims to ensure that specific functions will perform according to the requirements. This often include testing the functions with very simple parameters is an essential component of the process. This includes:
+
+\begin{itemize}
+    \item \textbf{Add functions : } Adding orders to the LOB, adding orders to the trading agent's personal record 
+    
+    \item \textbf{Delete functions : } Deleting best price order (order with lowest price in Ask side and best price in Bid side), delete a specific order in the LOB, delete an order in the agent's personal record 
+    
+     \item \textbf{Order submitted from agents: } This include setting the LOB parameters and evaluate their orders submitted by the agents to ensure that the algorithm matches the agent's performance description. 
+\end{itemize} 
+
+\section{Integration Test}
+Integration testing aims to evaluate the when the functions are working synchronously. This is specifically when an order is processed in the LOB. The integration test ensures that the output and the update of the LOB matches the expectation. It also ensures there is no error in edge cases. The cases include: 
+
+\begin{itemize}
+    \item \textbf{Limit Order : }By processing a limit order, the book must first add the order to the LOB of the correct side then match it with the corresponding order in the opposite side. If the order quantity does not fully matched, it must be kept in the book, waiting to be fulfilled.  
+    
+    \item \textbf{Market Order : }A market order, even if not fully matched by quantity, must not be kept in the book. In addition, the market order does not care which price it has been matched to, only the quantity is concerned. 
+    
+    \item \textbf{Any order with empty LOB: } If it is a limit order, then it will be added to the LOB. If it is a market order, it will be passed through without any matching.
+     
+    \item \textbf{Order from the same agent: } Because agents like Market maker can submit orders from both side of the book at the same time, it is essential that the LOB take into account it cannot match orders from the same agent, even if it is the only best price available. 
+    
+    \item \textbf{Number of orders in the Limit Order book from an agent: } For agents that can submit limit order, there cannot be more than one in each side. The first order must be "killed" or cancelled by the agent if a new one is submitted. For agents that only submit market orders, there should not be any orders from them staying the book after matching process has ended. 
+    
+    \item \textbf{Orders in the limit order book and personal records: } The personal records of an agent of the live orders and actual live orders in the LOB must match. 
+     
+\end{itemize} 
