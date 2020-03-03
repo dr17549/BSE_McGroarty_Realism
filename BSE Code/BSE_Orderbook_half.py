@@ -1,8 +1,6 @@
 import sys
 import collections
-
-bse_sys_minprice = 1  # minimum price in the system, in cents/pennies
-bse_sys_maxprice = 200 # maximum price in the system, in cents/pennies
+from BSE_Customer_Order import bse_sys_maxprice, bse_sys_minprice
 
 
 # Orderbook_half is one side of the book: a list of bids or a list of asks, each sorted best-first
@@ -109,7 +107,7 @@ class Orderbook_half:
                 # print('book_del %s', self.orders)
 
         def delete_best(self, oppo_tid, remaining_qty):
-                verbose = True
+                verbose = False
                 del_in_trader = False
                 quantity_decremented = 1
                 if verbose:
@@ -230,15 +228,15 @@ class Orderbook_half:
                         print("No order at the other side of the BOOK.")
 
                 self.build_lob()
-                if True:
+                if verbose:
                         print("UPDATED LOB :" + str(self.lob))
                         # for i in self.orders:
                         #         print("SELF.ORDERS : " + str(i) + " - " + str(self.orders[i]))
-                print("DEL - BEST : DEL IN TRADER : " + str(del_in_trader))
+                        print("DEL - BEST : DEL IN TRADER : " + str(del_in_trader))
                 return best_price_counterparty, order_del_qid, del_in_trader, trade_price, quantity_decremented
 
         def decrement_order(self,price,tid, quantity_decremented):
-                verbose = True
+                verbose = False
                 del_in_trader = False
                 if verbose:
                         print("DEC ORDER _ BEFORE LOB :" + str(self.lob))
@@ -340,7 +338,7 @@ class Orderbook_half:
 
                 if verbose:
                         print("DEC ORDER _ UPDATED LOB :" + str(self.lob))
-                print("DEC ORD : DEL IN TRADER : " + str(del_in_trader))
+                        print("DEC ORD : DEL IN TRADER : " + str(del_in_trader))
                 return del_in_trader
 
 # Orderbook for a single instrument: list of bids and list of asks

@@ -524,5 +524,89 @@ class Test_Decrement_Orders_edgecases(unittest.TestCase):
         self.assertEqual(exchange.bids.n_orders, 1)
         self.assertEqual(exchange.bids.best_qty,2)
 
+
+class Test_process_Orders_edgecases(unittest.TestCase):
+
+    def setUp(self):
+        pass
+
+    def test_processOrder_ask_wrong_price(self):
+        exchange = Exchange()
+        exchange.asks = Orderbook_half('Ask', 1)
+        exchange.bids = Orderbook_half('Bid', 100)
+        order01 = Order('T02', 'Bid', 13, 1, 1, 0, 'LIM')
+        order02 = Order('T01', 'Bid', 14, 3, 1, 0, 'LIM')
+        order03 = Order('T03', 'Bid', 15, 2, 1, 0, 'LIM')
+        exchange.add_order(order01, False)
+        exchange.add_order(order03, False)
+        exchange.add_order(order02, False)
+        order02 = Order('T01', 'Ask', 20, 6, 1, 0, 'LIM')
+        transac, actual = exchange.process_order2(12, order02, False, [], [])
+        self.assertEqual(len(transac), 0)
+
+    def test_processOrder_bid_wrong_price(self):
+        exchange = Exchange()
+        exchange.asks = Orderbook_half('Ask', 1)
+        exchange.bids = Orderbook_half('Bid', 100)
+        order01 = Order('T02', 'Ask', 13, 1, 1, 0, 'LIM')
+        order02 = Order('T01', 'Ask', 14, 3, 1, 0, 'LIM')
+        order03 = Order('T03', 'Ask', 15, 2, 1, 0, 'LIM')
+        exchange.add_order(order01, False)
+        exchange.add_order(order03, False)
+        exchange.add_order(order02, False)
+        order02 = Order('T01', 'Bid', 10, 6, 1, 0, 'LIM')
+        transac, actual = exchange.process_order2(12, order02, False, [], [])
+        self.assertEqual(len(transac), 0)
+
+    def test_processOrder_ask_wp_mkt(self):
+        exchange = Exchange()
+        exchange.asks = Orderbook_half('Ask', 1)
+        exchange.bids = Orderbook_half('Bid', 100)
+        order01 = Order('T02', 'Bid', 13, 1, 1, 0, 'LIM')
+        order02 = Order('T01', 'Bid', 14, 3, 1, 0, 'LIM')
+        order03 = Order('T03', 'Bid', 15, 2, 1, 0, 'LIM')
+        exchange.add_order(order01, False)
+        exchange.add_order(order03, False)
+        exchange.add_order(order02, False)
+        order02 = Order('T04', 'Ask', 20, 10, 1, 0, 'MKT')
+        transac, actual = exchange.process_order2(12, order02, False, [], [])
+        self.assertEqual(exchange.asks.n_orders, 0)
+        self.assertEqual(exchange.bids.n_orders, 0)
+
+        self.assertEqual(transac[0]['party1'], 'T03')
+        self.assertEqual(transac[0]['qty'], 2)
+        self.assertEqual(transac[1]['party1'], 'T01')
+        self.assertEqual(transac[1]['qty'],3)
+        self.assertEqual(transac[2]['party1'], 'T02')
+        self.assertEqual(transac[2]['qty'],1)
+
+        self.assertEqual(actual, 6)
+
+    def test_processOrder_bid_wp_mkt(self):
+        exchange = Exchange()
+        exchange.asks = Orderbook_half('Ask', 1)
+        exchange.bids = Orderbook_half('Bid', 100)
+        order01 = Order('T02', 'Ask', 13, 1, 1, 0, 'LIM')
+        order02 = Order('T01', 'Ask', 14, 3, 1, 0, 'LIM')
+        order03 = Order('T03', 'Ask', 15, 2, 1, 0, 'LIM')
+        exchange.add_order(order01, False)
+        exchange.add_order(order03, False)
+        exchange.add_order(order02, False)
+        order02 = Order('T04', 'Bid', 5, 10, 1, 0, 'MKT')
+        transac, actual = exchange.process_order2(12, order02, False, [], [])
+        self.assertEqual(exchange.asks.n_orders, 0)
+        self.assertEqual(exchange.bids.n_orders, 0)
+
+        self.assertEqual(transac[0]['party1'], 'T02')
+        self.assertEqual(transac[0]['qty'], 1)
+        self.assertEqual(transac[1]['party1'], 'T01')
+        self.assertEqual(transac[1]['qty'],3)
+        self.assertEqual(transac[2]['party1'], 'T03')
+        self.assertEqual(transac[2]['qty'],2)
+
+        self.assertEqual(actual, 6)
+
+
+
 if __name__ == '__main__':
     unittest.main()
