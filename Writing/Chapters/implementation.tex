@@ -206,8 +206,9 @@ McG's model does not rely on the assignments like the BSE. It relies on the ``be
 \caption{BSE market diagram} 
 \includegraphics[ height=8cm]{BSE_figure}
 \caption{McG's market model diagram} 
-\includegraphics[width=\textwidth, height=10cm]{McGroarty_figure}
+\includegraphics[width=12cm, height=10cm]{McGroarty_figure}
 \end{figure} 
+\FloatBarrier
 
 In the new implementation which this project is trying to achieve is finding a way to integrate these two systems so that the McG agents will be able to mimic the real market environment for the agents such as ZIP, ZIC and AA implemented in the BSE. This implementation requires a few changes.
 
@@ -218,15 +219,31 @@ In the new implementation which this project is trying to achieve is finding a w
 \end{itemize} 
 
 \section{Best Price in the BSE}
-Some of McG's agents depend on the "best price" of a side of the book in order to submit an order. However, unlike the real exchange market, the BSE does not always provide that, more specifically in the beginning of the trading day. This means that there must be some unavoidable modifications to the McG's agents condition regarding order submission. There are multiple approaches in which the project will explore, including:
+Some of McG's agents depend on the ``best price" of a side of the book in order to submit an order. However, unlike the real exchange market, the BSE does not always provide that, more specifically in the beginning of the trading day. This means that there must be some unavoidable modifications to the McG's agents condition regarding order submission. There are multiple approaches in which the project will explore, including:
 
 \begin{itemize}
-    \item \textbf{Not submitting if only the worst price is available} This simple makes sense because if the agent submits at the worst price, it is essentially making a loss, thus not a smart decision in any case. By skipping the round and waiting for the right market price is what any normal trader would do. 
+    \item \textbf{Not submitting if only the worst price is available} This simple makes sense because if the agent submits at the worst price, it is essentially making a loss, thus not a smart decision in any case. By skipping the round and waiting for the right market price is what any normal trader would do. However, this poses a problem when running the McG agents in a homogeneous market because in the BSE, the best price is will not be available until an agent submits an order. If none of the McG submits an order, the system will enter a loop where none of the agents will ever submit an order and the best price will never be avaialble. 
     
-    \item \textbf{Using the worst price with linear modification} * I'm not sure how to do this one yet so I'll be writing this one later 
+    \item \textbf{Using the worst price with linear modification} * I'm not sure how to do this one yet so I'll be writing this one later
+    
+    \item \textbf{Ensure that best price value is available at every iteration of the BSE} This means that the agent will always submit a constant (e.g. 100) whenever the best price is not available but they decide to submit an order. 
 \end{itemize} 
 
-\section{The effect of realism on how agents should act in each time step}
-Argument : It does not make sense where agents would stay still and do nothing in a time step where they can act (like BSE) where traders are chosen at random in each time step. 
+\section{Time-step and real market dynamics}
+The BSE time-step is easier to understand by giving an example. In a 300 BSE time-step, it is further divided into smaller steps which is equal to the total agents in the market. For example, if there are total of 14 agents in the market, the total number of time-steps in the 300 time period is $300 * 14 = 4200$. In these smaller time step, an agent is chosen randomly to act in each time-step. 
+
+In their paper, McG suggests that a new system to selecting agents will lead to a more realistic market. Unlike the BSE, the McG ensures that each agent has to act in every time-step. However, this is also dependent on a probability because in the real market, even if the price changes, not every high-frequency will be able to follow up and act on it. The probability is implemented based on this assumption. In addition, while BSE agents are required to submit an order if they are selected, the McG agents have two other options of submitting nothing or cancel their order(s). 
+
+However, this leads to a slight problem. By implementing McG style of agent selection without probability of acting,the number of orders in the market will increase which leads to agents such as ZI-P not converging to the equilibrium correctly. This can be solved by introducing the probability of acting for each agent, much like the McG agents. A detailed investigation is presented in section 4.3. 
+
+\section{Merging assignment based BSE system and McG ``best price" system}
+The first change that must be made is that the BSE will give out order assignments to every agent except the McG agents. This will ensure that agents such as ZI-P, ZI-C or Sniper will perform correctly while running along the McG agents. Secondly, to solve the problem of the best price, one of the strategies from section 2.3 must be implemented. The McG agents will need to be adapt to include probability of acting because the selection of agents is now changed. 
+
+
+\begin{figure}[!htbp]
+\caption{BSE and McG merging market system diagram} 
+\includegraphics[width=16cm,height=16cm]{Dissertation/images/merge_bse_mcg.png}
+\end{figure} 
+\FloatBarrier
 
 % \end{document} 

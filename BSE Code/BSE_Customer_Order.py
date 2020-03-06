@@ -143,7 +143,7 @@ def customer_orders_new(time, last_update, traders, trader_stats, os, pending, v
 
     n_buyers = trader_stats['n_buyers']
     n_sellers = trader_stats['n_sellers']
-    mcGagents = ['LIQ', "NOISE", 'MARKET_M', 'MOMENTUM', 'MEAN_R']
+    mcGagents = ['LIQ', 'NOISE', 'MARKET_M', 'MOMENTUM', 'MEAN_R']
     shuffle_times = True
 
     cancellations = []
@@ -155,7 +155,6 @@ def customer_orders_new(time, last_update, traders, trader_stats, os, pending, v
 
         # demand side (buyers)
         issuetimes = getissuetimes(n_buyers, os['timemode'], os['interval'], shuffle_times, True)
-
         ordertype = 'Bid'
         (sched, mode) = getschedmode(time, os['dem'])
         for t in range(n_buyers):
@@ -198,6 +197,9 @@ def customer_orders_new(time, last_update, traders, trader_stats, os, pending, v
                 # this order stays on the pending list
                 new_pending.append(order)
     return [new_pending, cancellations]
+
+
+# OLD CUSTOMER ORDER
 
 def customer_orders(time, last_update, traders, trader_stats, os, pending, verbose):
     def sysmin_check(price):

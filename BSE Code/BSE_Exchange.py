@@ -66,17 +66,16 @@ class Exchange(Orderbook):
             # neither bid nor ask?
             sys.exit('bad order type in del_quote()')
 
-    def append_counter_party(self, counter_party, opposite_tid, price, qty_traded):
+    def append_counter_party(self, counter_party, opposite_tid, price, qty_traded, cp_del_in_trader, cp_order_qid):
         if counter_party == []:
-            counter_party.append([opposite_tid, price, qty_traded])
-
+            counter_party.append([opposite_tid, price, qty_traded, cp_del_in_trader, cp_order_qid])
         else:
-            counter_party.append([opposite_tid, price, qty_traded])
+            counter_party.append([opposite_tid, price, qty_traded, cp_del_in_trader, cp_order_qid])
+
         return counter_party
 
 
-
-    def process_order2(self, time, order, verbose, traderlist, traders):
+    def process_order2(self, time, order, verbose):
         # receive an order and either add it to the relevant LOB (ie treat as limit order)
         # or if it crosses the best counterparty offer, execute it (treat as a market order)
 
@@ -146,7 +145,7 @@ class Exchange(Orderbook):
 
                             party_del_in_trader = self.bids.decrement_order(oprice, order.tid, quantity_dec)
 
-                            counterparty = self.append_counter_party(counterparty,cp, trade_price, quantity_dec)
+                            counterparty = self.append_counter_party(counterparty, cp, trade_price, quantity_dec, cp_del_in_trader, cp_order_qid)
 
 
                             remaining_quantity = remaining_quantity - quantity_dec
@@ -174,7 +173,7 @@ class Exchange(Orderbook):
 
                             party_del_in_trader = self.asks.decrement_order(oprice, order.tid, quantity_dec)
 
-                            counterparty = self.append_counter_party(counterparty, cp, trade_price, quantity_dec)
+                            counterparty = self.append_counter_party(counterparty, cp, trade_price, quantity_dec, cp_del_in_trader,cp_order_qid )
 
                             remaining_quantity = remaining_quantity - quantity_dec
                             order_quantity = original_quantity - remaining_quantity
@@ -195,7 +194,7 @@ class Exchange(Orderbook):
 
                         party_del_in_trader = self.bids.decrement_order(oprice, order.tid, quantity_dec)
 
-                        counterparty = self.append_counter_party(counterparty, cp, trade_price, quantity_dec)
+                        counterparty = self.append_counter_party(counterparty, cp, trade_price, quantity_dec, cp_del_in_trader, cp_order_qid)
 
                         remaining_quantity = remaining_quantity - quantity_dec
                         order_quantity = original_quantity - remaining_quantity
@@ -216,7 +215,7 @@ class Exchange(Orderbook):
                         cp, cp_order_qid,cp_del_in_trader, trade_price, quantity_dec = self.bids.delete_best(order.tid, remaining_quantity)
 
                         party_del_in_trader = self.asks.decrement_order(oprice, order.tid, quantity_dec)
-                        counterparty = self.append_counter_party(counterparty, cp, trade_price, quantity_dec)
+                        counterparty = self.append_counter_party(counterparty, cp, trade_price, quantity_dec, cp_del_in_trader, cp_order_qid)
 
                         remaining_quantity = remaining_quantity - quantity_dec
                         order_quantity = original_quantity - remaining_quantity
@@ -236,7 +235,7 @@ class Exchange(Orderbook):
             sys.exit('process_order() given neither Bid nor Ask')
 
         if True:
-            print("TRADE ORIGINAL : " + str(order.tid) + "  COUNTER PARTY of TRADE : " + str(counterparty))
+            print(" ##### TRADE ORIGINAL : " + str(order.tid) + "  COUNTER PARTY of TRADE : " + str(counterparty))
             if len(counterparty) > 0 :
                 print(" ****** ACTUAL QUANTITY PERFORMED : " + str(order_quantity))
 
@@ -255,9 +254,9 @@ class Exchange(Orderbook):
                                       'price': counterparty[num][1],
                                       'party1': counterparty[num][0],
                                       'party2': order.tid,
-                                      'op_order_qid': cp_order_qid,
+                                      'op_order_qid': counterparty[num][4],
                                       'qty': counterparty[num][2],
-                                      'del_party1': cp_del_in_trader,
+                                      'del_party1': counterparty[num][3],
                                       'del_party2': party_del_in_trader
                                       }
                 list_transac_rec.append(transaction_record)

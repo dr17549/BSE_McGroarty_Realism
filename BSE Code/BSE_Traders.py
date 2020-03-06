@@ -45,26 +45,54 @@ class Trader:
                 if verbose : print('add_order < response=%s' % response)
                 return response
 
+        def del_order(self, order):
+            # this is lazy: assumes each trader has only one customer order with quantity=1, so deleting sole order
+            # CHANGE TO DELETE THE HEAD OF THE LIST AND KEEP THE TAIL
+            self.orders = []
 
-        def del_order(self, order_id, actual_quantity_traded):
+        def bookkeep(self, trade, order, verbose, time):
+
+            outstr = ""
+            for order in self.orders: outstr = outstr + str(order)
+
+            self.blotter.append(trade)  # add trade record to trader's blotter
+            # NB What follows is **LAZY** -- assumes all orders are quantity=1
+            transactionprice = trade['price']
+            if self.orders[0].otype == 'Bid':
+                profit = self.orders[0].price - transactionprice
+            else:
+                profit = transactionprice - self.orders[0].price
+            self.balance += profit
+            self.n_trades += 1
+            self.profitpertime = self.balance / (time - self.birthtime)
+
+            if profit < 0:
+                print(profit)
+                print(trade)
+                print(order)
+                sys.exit()
+
+            if verbose: print(
+                        '%s profit=%d balance=%d profit/time=%d' % (outstr, profit, self.balance, self.profitpertime))
+            self.del_order(order)  # delete the order
+
+        def del_order_new(self, order_id, actual_quantity_traded):
                 verbose = False
-                if verbose:
-                    print("&& ______ DEL FUNCTION CALLED")
                 for iter in range(len(self.orders)):
-                    if self.orders[iter].qid == order_id and actual_quantity_traded == self.orders[iter].qty and self.orders[iter].qty == 1:
+                    print("ORDER ID  : " + str(order_id) + " ITER ID :  " + str(self.orders[iter].qid))
+                    if (self.orders[iter].qid == order_id) and (actual_quantity_traded >= self.orders[iter].qty):
                         if verbose:
                             print("DEL_ORDER : deleting : " + str(self.orders[iter]) + " which matched : " + str(self.orders[iter]))
                         self.orders.pop(iter)
                         break
-                    # elif self.orders[iter].qid == order_id and actual_quantity_traded < self.orders[iter].qty:
-                    #     if True:
-                    #         print("DEL ORDER FROM " + str(self.orders[iter].qty) + " TO " + str(self.orders[iter].qty - actual_quantity_traded))
-                    #
-                    #     self.orders[iter].qty = self.orders[iter].qty - actual_quantity_traded
-                    #     if True:
-                    #
-                    #         print("@@ DEL_2ND_ORDER : change value of order as : " + str(self.orders[iter]) + " which matched : " + str(self.orders[iter]))
-                    #     break
+                    elif self.orders[iter].qid == order_id and actual_quantity_traded < self.orders[iter].qty:
+                        if verbose:
+                            print("DEL ORDER FROM " + str(self.orders[iter].qty) + " TO " + str(self.orders[iter].qty - actual_quantity_traded))
+
+                        self.orders[iter].qty = self.orders[iter].qty - actual_quantity_traded
+                        if verbose:
+                            print("@@ DEL_2ND_ORDER : change value of order as : " + str(self.orders[iter]) + " which matched : " + str(self.orders[iter]))
+                        break
                 # this cannot happen because it is simply not possible
                 mcg_names = ['MARKET_M', "LIQ", "NOISE", "MOMENTUM", "MEAN_R"]
                 if len(self.orders) == 0 and self.ttype not in mcg_names:
@@ -72,9 +100,10 @@ class Trader:
                     sys.exit(1)
 
 
-        def bookkeep(self, trade, order, verbose, time, actual_quantity_traded, del_ord = False):
+        def bookkeep_new(self, trade, order, verbose, time, actual_quantity_traded, del_ord = False):
 
-                print_check = True
+                print_check = False
+
                 outstr=""
                 for order in self.orders: outstr = outstr + str(order)
 
@@ -97,16 +126,15 @@ class Trader:
                 #         sys.exit("BAD PROFIT CALCULATION")
 
                 # if verbose: print('%s profit=%d balance=%d profit/time=%d' % (outstr, profit, self.balance, self.profitpertime))
-
-                # todo does this assume that the order is a just an order, no quantity?
-
                 if self.tid == trade['party1'] and del_ord:
-                    print(" TRADER - " + str(self.tid) + " GOING TO DEL : " + str(trade['op_order_qid']) + " BOOLEAN : " + str(del_ord))
-                    self.del_order(trade['op_order_qid'], actual_quantity_traded)  # delete the order
+                    if print_check:
+                        print(" Party1 - TRADER - " + str(self.tid) + " GOING TO DEL : " + str(trade['op_order_qid']) + " BOOLEAN : " + str(del_ord))
+                    self.del_order_new(trade['op_order_qid'], actual_quantity_traded)  # delete the order
                 else:
                     if del_ord:
-                        print(" TRADER - " + str(self.tid) + " GOING TO DEL : " + str(order.qid) +  " BOOLEAN : " + str(del_ord))
-                        self.del_order(order.qid, actual_quantity_traded)
+                        if print_check:
+                            print(" Party2 - TRADER - " + str(self.tid) + " GOING TO DEL : " + str(order.qid) +  " BOOLEAN : " + str(del_ord))
+                        self.del_order_new(order.qid, actual_quantity_traded)
 
 
         # specify how trader responds to events in the market
@@ -151,7 +179,7 @@ class Trader_ZIC(Trader):
 
         def getorder(self, time, countdown, lob):
                 submit_order = []
-                if random.random() < 0.8:
+                if random.random() < 0.1:
                     if len(self.orders) < 1:
                             # no orders: return NULL
                             order = None
@@ -285,7 +313,7 @@ class Trader_ZIP(Trader):
 
         def getorder(self, time, countdown, lob):
                 submit_order = []
-                if random.random() < 0.8:
+                if random.random() < 1:
                     if len(self.orders) < 1:
                             self.active = False
                             order = None
@@ -305,7 +333,7 @@ class Trader_ZIP(Trader):
                             order = Order(self.tid, self.job, quoteprice, self.orders[0].qty, time, lob['QID'],'LIM')
                             self.lastquote = order
 
-                    if order != None:
+                    if order is not None:
                         submit_order.append(order)
                 return submit_order, []
 
@@ -465,11 +493,12 @@ class Trader_ZIP(Trader):
                 self.prev_best_ask_p = lob_best_ask_p
                 self.prev_best_ask_q = lob_best_ask_q
 
-
 ##########################---McGraorty et al.'s Agents --################
 
 # My own traders
 # 1. Market Maker - both buyer and seller
+
+
 class Market_Maker(Trader):
     def __init__(self, ttype, tid, balance, time):
         Trader.__init__(self, ttype, tid, balance, time)
@@ -479,6 +508,8 @@ class Market_Maker(Trader):
         self.period_counter = 0
         self.prices = numpy.array([0])
         self.last_orders = []
+        self.best_ask = 300 + 0.05
+        self.best_bid = 300 - 0.05
 
     # update moving average of price with normal moving average
     def update_moving_avg(self):
@@ -499,107 +530,107 @@ class Market_Maker(Trader):
             self.prices = numpy.append(self.prices,new_price)
         return None
 
+    def update_best_prices(self,lob):
+        if lob['bids']['best'] is not None and lob['asks']['best'] is not None:
+            self.best_ask = lob['asks']['best']
+            self.best_bid = lob['bids']['best']
 
     def respond(self, time, lob, trade, verbose):
         # update moving average
         self.update_moving_avg()
         self.append_price(lob)
-
+        self.update_best_prices(lob)
         return None
 
     def getorder(self, time, countdown, lob):
-        #random using guassian
+        # random using guassian
         order = []
         list_order = []
         verbose = True
-        if lob['asks']['best'] != None and lob['bids']['best'] != None:
-            best_bid = lob['asks']['best']
-            best_ask = lob['bids']['best']
-        else:
-            best_bid = 299
-            best_ask = 301
-        if random.random() < self.beta_random:
-            if verbose:
-                print("____ MARKET MAKER LOGIC ____")
-            quantity_vdash = 1
-            delete = []
+        if True:
+            self.update_best_prices(lob)
+            best_bid = self.best_ask
+            best_ask = self.best_bid
 
-            # cancel one of them by using del_exch_order(self, oid, verbose) or del_cust_order
-            if len(self.live_orders) > 1:
-                for orders in self.live_orders[0:len(self.live_orders)]:
-                    delete.append(orders)
-                    # self.orders.remove(orders)
-            #reset the live order array
-            self.live_orders = []
-            if lob['asks']['best'] != None and lob['bids']['best'] != None:
-                mid_price = (lob['asks']['best'] + lob['bids']['best']) / 2
-            else:
-                mid_price = 300
-            # predicts next order is buy
-
-            if self.moving_average < mid_price:
-                # Update moving average
-                # self.moving_average = float((1 + self.moving_average) / 2)
-
-                # Submit sell at best price with volume = U(vmin,vmax)
-                quantity = int(numpy.random.uniform(1, 200000))
-                if quantity < 1:
-                    quantity = 1
-                print("MM : QTY : " + str(quantity))
-                first_order = Order(self.tid,
-                              'Ask',
-                              best_ask,
-                              quantity,
-                              time, -1, 'LIM')
-                list_order.append(first_order)
-                self.live_orders.append(first_order)
-
-                second_order = Order(self.tid,
-                              'Bid',
-                              best_bid,
-                              quantity_vdash,
-                              time, -1, 'LIM')
-                list_order.append(second_order)
-                self.lastquote = second_order
-                self.live_orders.append(second_order)
+            if random.random() < self.beta_random:
                 if verbose:
-                    print("____ ASK FIRST : MARKET MAKER ORDERS ____ FROM : " + str(self.tid))
-                    print(str(first_order))
-                    print(str(second_order))
-                    print("______________________________________________")
+                    print("____ MARKET MAKER LOGIC ____")
+                quantity_vdash = 1
+                delete = []
 
-                return list_order, delete
-            # Predict next order is to sell
-            else:
-                # Update moving average
-                list_order = []
-                # self.moving_average = float((0 + self.moving_average) / 2)
-                # Submit sell at best price with volume = U(vmin,vmax)
-                quantity = int(numpy.random.uniform(1, 200000))
-                if quantity < 1:
-                    quantity = 1
-                if verbose:
-                    print("MM : QTY : " + str(quantity))
-                first_order = Order(self.tid,
-                                    'Bid',
-                                    best_bid,
-                                    quantity,
-                                    time, -1, 'LIM')
-                list_order.append(first_order)
-                self.live_orders.append(first_order)
-                second_order = Order(self.tid,
-                                     'Ask',
-                                     best_ask,
-                                     quantity_vdash,
-                                     time, -1, 'LIM')
-                list_order.append(second_order)
-                self.live_orders.append(second_order)
-                self.lastquote = second_order
+                # cancel one of them by using del_exch_order(self, oid, verbose) or del_cust_order
+                if len(self.live_orders) > 1:
+                    for orders in self.live_orders[0:len(self.live_orders)]:
+                        delete.append(orders)
+                        # self.orders.remove(orders)
+                #reset the live order array
+                self.live_orders = []
+                # predicts next order is buy
+                if lob['asks']['best'] is not None and lob['bids']['best'] is not None:
+                    mid_price = (lob['asks']['best'] + lob['bids']['best'])/2
+                    if self.moving_average < mid_price:
+                        # Update moving average
+                        # self.moving_average = float((1 + self.moving_average) / 2)
 
-                print("____ BID FIRST: MARKET MAKER SUBMIT ORDERS ____ FROM : " + str(self.tid))
-                print(str(first_order))
-                print(str(second_order))
-                print("______________________________________________")
+                        # Submit sell at best price with volume = U(vmin,vmax)
+                        quantity = int(numpy.random.uniform(1, 200000))
+                        if quantity < 1:
+                            quantity = 1
+                        print("MM : QTY : " + str(quantity))
+                        first_order = Order(self.tid,
+                                      'Ask',
+                                      best_ask,
+                                      quantity,
+                                      time, -1, 'LIM')
+                        list_order.append(first_order)
+                        self.live_orders.append(first_order)
+
+                        second_order = Order(self.tid,
+                                      'Bid',
+                                      best_bid,
+                                      quantity_vdash,
+                                      time, -1, 'LIM')
+                        list_order.append(second_order)
+                        self.lastquote = second_order
+                        self.live_orders.append(second_order)
+                        if verbose:
+                            print("____ ASK FIRST : MARKET MAKER ORDERS ____ FROM : " + str(self.tid))
+                            print(str(first_order))
+                            print(str(second_order))
+                            print("______________________________________________")
+
+                        return list_order, delete
+                    # Predict next order is to sell
+                    else:
+                        # Update moving average
+                        list_order = []
+                        # self.moving_average = float((0 + self.moving_average) / 2)
+                        # Submit sell at best price with volume = U(vmin,vmax)
+                        quantity = int(numpy.random.uniform(1, 200000))
+                        if quantity < 1:
+                            quantity = 1
+                        if verbose:
+                            print("MM : QTY : " + str(quantity))
+                        first_order = Order(self.tid,
+                                            'Bid',
+                                            best_bid,
+                                            quantity,
+                                            time, -1, 'LIM')
+                        list_order.append(first_order)
+                        self.live_orders.append(first_order)
+                        second_order = Order(self.tid,
+                                             'Ask',
+                                             best_ask,
+                                             quantity_vdash,
+                                             time, -1, 'LIM')
+                        list_order.append(second_order)
+                        self.live_orders.append(second_order)
+                        self.lastquote = second_order
+
+                        # print("____ BID FIRST: MARKET MAKER SUBMIT ORDERS ____ FROM : " + str(self.tid))
+                        # print(str(first_order))
+                        # print(str(second_order))
+                        # print("______________________________________________")
 
                 return list_order, delete
         # update rolling mean average
@@ -613,17 +644,29 @@ class Liqudity_consumer(Trader):
         Trader.__init__(self, ttype, tid, balance, time)
         self.lc_rand = 0.05
         self.moving_average = 0
-        self.total_volume = 10
-        self.remainding_volume = 10
+        self.total_volume = 100000 * 1000
+        self.remainding_volume = 100000 * 1000
         self.day_task = 'asks'
         self.cap_task= 'Ask'
         self.first_call = True
         self.lastprice = 0
+        self.best_bid = 300 + 0.05
+        self.best_ask = 300 - 0.05
+
+    def update_best_prices(self,lob):
+        if lob['bids']['best'] is not None and lob['asks']['best'] is not None:
+            self.best_ask = lob['asks']['best']
+            self.best_bid = lob['bids']['best']
+
+    def respond(self, time, lob, trade, verbose):
+        # update moving average
+        # self.update_best_prices(lob)
+        return None
 
     def getorder(self, time, countdown, lob):
         orderstyle = 'MKT'
         order_array = []
-        verbose = True
+        verbose = False
         # TO-DO if start of day
         if len(self.orders) < 1:
             order_array = []
@@ -641,11 +684,17 @@ class Liqudity_consumer(Trader):
                     self.day_task = 'bids'
                     self.cap_task = 'Bid'
 
+                best_price = lob[self.day_task]['best']
+                if best_price != None and best_price > self.lastprice:
+                    best_price = lob[self.day_task]['best']
+                else:
+                    best_price = lob[self.day_task]['worst']
+                self.lastprice = best_price
 
                 # change this to bestp
                 order = Order(self.tid,
                               self.cap_task,
-                              lob[self.day_task]['worst'],
+                              best_price,
                               initial_quantity,
                               time, -1,orderstyle)
 
@@ -658,13 +707,20 @@ class Liqudity_consumer(Trader):
                 order_array.append(order)
             # Not start of the day
             else:
+                self.update_best_prices(lob)
                 if random.random() < self.lc_rand:
-                    # if verbose:
-                    #     print("____ LIQUIDITY CONSUMER Next Order ____ ")
 
-                    #todo change this after the rest of the code executes properly
+                    # Old code
                     if self.remainding_volume > 0 and lob[self.day_task]['best'] != None and lob[self.day_task]['qty'] > 0:
-                        # check price
+                        # personal self price
+                        # -------------------------
+                        # if self.remainding_volume > 0:
+                        #     if self.day_task == 'bids':
+                        #         best_price = self.best_bid
+                        #     else:
+                        #         best_price = self.best_ask
+                        # ------------------------- "
+
                         best_price = lob[self.day_task]['best']
                         if best_price != None and best_price > self.lastprice:
                             best_price = lob[self.day_task]['best']
@@ -779,7 +835,6 @@ class Mean_Reversion(Trader):
 
     def getorder(self, time, countdown, lob):
         order_submit = []
-
         if lob['asks']['best'] != None and lob['bids']['best'] != None:
             current_price = (lob['asks']['best'] + lob['bids']['best']) / 2
             self.price_movement.append(current_price)
@@ -826,17 +881,26 @@ class Noise_Trader(Trader):
         self.task = 'asks'
         self.cap_task = 'Ask'
         self.last_order = None
+        self.best_bid = 300 + 0.05
+        self.best_ask = 300 - 0.05
 
+    def update_best_prices(self,lob):
+        if lob['bids']['best'] is not None and lob['asks']['best'] is not None:
+            self.best_ask = lob['asks']['best']
+            self.best_bid = lob['bids']['best']
 
 
     def respond(self, time, lob, trade, verbose):
-
+        # update moving average
+        self.update_best_prices(lob)
         return None
+
 
     def getorder(self, time, countdown, lob):
         order_array = []
         del_array = []
         verbose = False
+        self.update_best_prices(lob)
         # if len(self.orders) > 0:
         if random.random() < self.nt:
             if random.random() < 0.5:
@@ -904,11 +968,15 @@ class Noise_Trader(Trader):
                 # Crossing limit order
                 if sample > 0 and sample <= crs:
                     print("CROSSING")
-                    if lob[self.task]['best'] != None:
-                        price  =  lob[self.task]['best']
+                    # if lob[self.task]['best'] != None:
+                    #     price  =  lob[self.task]['best']
+                    # else:
+                    #     # price = lob[self.task]['worst']
+                    #     price = 300
+                    if self.task == 'bids':
+                        price = self.best_bid
                     else:
-                        # price = lob[self.task]['worst']
-                        price = 300
+                        price = self.best_ask
                     order = Order(self.tid,
                                   self.cap_task,
                                   price,
@@ -920,12 +988,16 @@ class Noise_Trader(Trader):
                 # Inside spread limit order
                 elif sample > crs and sample <= crs + inspr:
                     # print("ISLO")
-                    if lob['asks']['best'] != None and lob['bids']['best'] != None:
-                        price = numpy.random.uniform(lob['bids']['best'], lob['asks']['best'])
+                    # if lob['asks']['best'] != None and lob['bids']['best'] != None:
+                    #     price = numpy.random.uniform(lob['bids']['best'], lob['asks']['best'])
+                    # else:
+                    #     # price = numpy.random.uniform(lob['bids']['worst'], lob['asks']['worst'])
+                    #     # MCG Price
+                    #     price = 300 + 0.05
+                    if self.task == 'bids':
+                        price = self.best_bid
                     else:
-                        # price = numpy.random.uniform(lob['bids']['worst'], lob['asks']['worst'])
-                        # MCG Price
-                        price = 300 + 0.05
+                        price = self.best_ask
                     order = Order(self.tid,
                                   self.cap_task,
                                   price,
@@ -937,11 +1009,15 @@ class Noise_Trader(Trader):
                 # Spread limit order
                 elif sample > crs + inspr and sample <= crs + inspr + crs:
                     # print("SPO")
-                    if(lob[self.task]['best'] != None):
-                        price = lob[self.task]['best']
+                    # if(lob[self.task]['best'] != None):
+                    #     price = lob[self.task]['best']
+                    # else:
+                    #     # price = lob[self.task]['worst']
+                    #     price = 300
+                    if self.task == 'bids':
+                        price = self.best_bid
                     else:
-                        # price = lob[self.task]['worst']
-                        price = 300
+                        price = self.best_ask
                     order = Order(self.tid,
                                   self.cap_task,
                                   price,
@@ -957,46 +1033,51 @@ class Noise_Trader(Trader):
                     offset_uO = numpy.random.uniform(0, 1)
                     xmin = 0.05
                     Beta = 2.72
-                    price_percent_off = float(xmin * math.pow((1 - offset_uO), -(1/(Beta - 1))))
+                    power = math.pow((1 - offset_uO), -(1/(Beta - 1)))
+                    price_percent_off = float(xmin * power)
 
-                    if (lob[self.task]['best'] is not None):
-                        mid_price = lob[self.task]['best']
-                    else:
-                        mid_price = 300
+                    # if (lob[self.task]['best'] is not None):
+                    #     mid_price = lob[self.task]['best']
+                    # else:
+                    #     mid_price = 300
+
+                    mid_price = (self.best_ask + self.best_bid)/ 2
 
                     if self.task == 'bids':
-                        # price = mid_price + float((price_percent_off * mid_price) / 100)
-                        if lob[self.task]['best'] is not None:
-                            price = lob[self.task]['best'] + price_percent_off
-                        else:
-                            price = mid_price + price_percent_off
+                        # price = mid_price + price_percent_off
+                        price = mid_price + float(((price_percent_off/100) * mid_price))
+                        # if lob[self.task]['best'] is not None:
+                        #     price = lob[self.task]['best'] + price_percent_off
+                        # else:
+                        #     price = mid_price + price_percent_off
                     else:
-                        # price = mid_price - float((price_percent_off * mid_price) / 100)
-                        if lob[self.task]['best'] is not None:
-                            price = lob[self.task]['best'] - price_percent_off
-                        else:
-                            price = mid_price - price_percent_off
-                    if price < 1:
-                        print("Mid price " + str(mid_price))
-                        print("percent : " + str(price_percent_off))
-                        print("OFFSET : " + str(offset_uO))
-                        print("price : " + str(price))
-                        print("Calculated offset from midprice : " + str((mid_price * float(1 - (price_percent_off)))))
-                        sys.exit("Price from noise trader less than 0")
-                    order = Order(self.tid,
-                                  self.cap_task,
-                                  price,
-                                  quantity,
-                                  time, -1, 'LIM')
-                    order_array.append(order)
-                    print("OFFSPR _ PRICE : " + str(price))
-                    self.last_order = order
+                        # price = mid_price - price_percent_off
+                        price = mid_price - float(((price_percent_off/100) * mid_price))
+                        # if lob[self.task]['best'] is not None:
+                        #     price = lob[self.task]['best'] - price_percent_off
+                        # else:
+                        #     price = mid_price - price_percent_off
+                    if price > 0:
+                        # print("Mid price " + str(mid_price))
+                        # print("percent : " + str(price_percent_off))
+                        # print("OFFSET : " + str(offset_uO))
+                        # print("power : " + str(power))
+                        # print("price : " + str(price))
+                        # print("Calculated offset from midprice : " + str((mid_price * float(1 - (price_percent_off)))))
+                        order = Order(self.tid,
+                                      self.cap_task,
+                                      int(price),
+                                      quantity,
+                                      time, -1, 'LIM')
+                        order_array.append(order)
+                        print("OFFSPR _ PRICE : " + str(price))
+                        self.last_order = order
 
             else:
                 if self.last_order != None:
                     print("NOISE TRADER : Cancel Order : " + str(self.last_order))
                     del_array.append(self.last_order)
-                    self.del_order(self.last_order,self.last_order.qty)
+                    self.del_order_new(self.last_order.qid, self.last_order.qty)
                     self.last_order = None
 
         # if order_array != []:

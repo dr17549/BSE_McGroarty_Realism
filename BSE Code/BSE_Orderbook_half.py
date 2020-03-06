@@ -230,10 +230,41 @@ class Orderbook_half:
                 self.build_lob()
                 if verbose:
                         print("UPDATED LOB :" + str(self.lob))
-                        # for i in self.orders:
-                        #         print("SELF.ORDERS : " + str(i) + " - " + str(self.orders[i]))
-                        print("DEL - BEST : DEL IN TRADER : " + str(del_in_trader))
+                if del_in_trader:
+                        print("Deleting order ID : " + str(order_del_qid) + " in trader : " + str(best_price_counterparty))
                 return best_price_counterparty, order_del_qid, del_in_trader, trade_price, quantity_decremented
+
+        def delete_best_old(self):
+                # delete order: when the best bid/ask has been hit, delete it from the book
+                # the TraderID of the deleted order is return-value, as counterparty to the trade
+                best_price_orders = self.lob[self.best_price]
+                best_price_qty = best_price_orders[0]
+                best_price_counterparty = best_price_orders[1][0][2]
+                if best_price_qty == 1:
+                        # here the order deletes the best price
+                        del (self.lob[self.best_price])
+                        del (self.orders[best_price_counterparty])
+                        self.n_orders = self.n_orders - 1
+                        if self.n_orders > 0:
+                                if self.booktype == 'Bid':
+                                        self.best_price = max(self.lob.keys())
+                                else:
+                                        self.best_price = min(self.lob.keys())
+                                self.lob_depth = len(self.lob.keys())
+                        else:
+                                self.best_price = self.worstprice
+                                self.lob_depth = 0
+                else:
+                        # best_bid_qty>1 so the order decrements the quantity of the best bid
+                        # update the lob with the decremented order data
+                        self.lob[self.best_price] = [best_price_qty - 1, best_price_orders[1][1:]]
+
+                        # update the bid list: counterparty's bid has been deleted
+                        del (self.orders[best_price_counterparty])
+                        self.n_orders = self.n_orders - 1
+                self.build_lob()
+                return best_price_counterparty
+
 
         def decrement_order(self,price,tid, quantity_decremented):
                 verbose = False
@@ -275,8 +306,6 @@ class Orderbook_half:
                         del (self.lob[self.best_price])
                         del (self.orders[best_price_counterparty])
                         self.n_orders = self.n_orders - 1
-                        # print("$$$$$ DEC == 1-- ORDER N : " + str(self.n_orders))
-                        print("LOB : " + str(self.lob))
                         if self.n_orders > 0:
                                 if self.booktype == 'Bid':
                                         self.best_price = max(self.lob.keys())
@@ -300,12 +329,7 @@ class Orderbook_half:
                                 if self.lob[price][1][agent_submitted][2] == best_price_counterparty:
                                         trade_quantity_before_dec = self.lob[price][1][agent_submitted][1]
                                         if self.lob[price][1][agent_submitted][1] == quantity_decremented:
-                                                if verbose:
-                                                        print("DEC ORDER DEL " + str(self.lob[price][1][agent_submitted]))
-                                                        print("BEFORE : " + str(self.lob))
                                                 self.lob[price][1].remove(self.lob[price][1][agent_submitted])
-                                                if verbose:
-                                                        print("AFTER : " + str(self.lob))
                                                 # del(self.lob[price][1][agent_submitted])
                                                 self.n_orders -= 1
                                                 break
@@ -337,8 +361,7 @@ class Orderbook_half:
                 self.build_lob()
 
                 if verbose:
-                        print("DEC ORDER _ UPDATED LOB :" + str(self.lob))
-                        print("DEC ORD : DEL IN TRADER : " + str(del_in_trader))
+                        print("DEC ORDER _ AFTER LOB :" + str(self.lob))
                 return del_in_trader
 
 # Orderbook for a single instrument: list of bids and list of asks
