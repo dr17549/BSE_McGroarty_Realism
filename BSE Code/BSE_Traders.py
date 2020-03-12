@@ -655,6 +655,8 @@ class Liqudity_consumer(Trader):
         self.remainding_volume = 0
         self.day_task = 'asks'
         self.cap_task= 'Ask'
+        self.opposite_task = 'bids'
+        self.opposte_cap = 'Bid'
         self.first_call = True
         self.best_bid = 300 + 0.05
         self.best_ask = 300 - 0.05
@@ -689,13 +691,15 @@ class Liqudity_consumer(Trader):
             initial_quantity = int(numpy.random.uniform(1,100000))
 
             if random.random() > 0.5:
-                #BUY
                 self.day_task = 'asks'
                 self.cap_task = 'Ask'
+                self.opposite_task = 'bids'
+                self.opposte_cap = 'Bid'
             else:
-                # SELL
                 self.day_task = 'bids'
                 self.cap_task = 'Bid'
+                self.opposite_task = 'asks'
+                self.opposte_cap = 'Ask'
             self.total_volume = initial_quantity
             self.remainding_volume = initial_quantity
 
@@ -711,9 +715,9 @@ class Liqudity_consumer(Trader):
                 else:
                     best_price = self.best_bid
 
-                if self.remainding_volume > 0 and lob[self.day_task]['qty'] > 0:
+                if self.remainding_volume > 0 and lob[self.opposite_task]['qty'] > 0:
 
-                    best_quantity = lob[self.day_task]['qty']
+                    best_quantity = lob[self.opposite_task]['qty']
 
                     # check quantity
                     if best_quantity >= self.remainding_volume:
@@ -734,6 +738,33 @@ class Liqudity_consumer(Trader):
 
                     order_array.append(order)
                     self.lastquote = order
+                elif self.remainding_volume == 0 and lob[self.opposite_task]['qty'] > 0:
+                    initial_quantity = int(numpy.random.uniform(1, 100000))
+                    self.total_volume = initial_quantity
+                    self.remainding_volume = initial_quantity
+
+                    best_quantity = lob[self.opposite_task]['qty']
+
+                    # check quantity
+                    if best_quantity >= self.remainding_volume:
+                        submit_quantity = self.remainding_volume
+                    else:
+                        submit_quantity = best_quantity
+
+                    order = Order(self.tid,
+                                  self.cap_task,
+                                  best_price,
+                                  submit_quantity,
+                                  time, -1, orderstyle)
+                    self.remainding_volume = self.remainding_volume - submit_quantity
+
+                    if verbose:
+                        print("_____ LIQ AGENT ORDER ____")
+                        print(" LIQ : " + str(self.tid) + " *Normal ORDER* : " + str(order))
+
+                    order_array.append(order)
+                    self.lastquote = order
+
         return order_array, []
 
 
@@ -866,6 +897,8 @@ class Noise_Trader(Trader):
         self.nt = 1.1
         self.task = 'asks'
         self.cap_task = 'Ask'
+        self.opposite_task = 'bids'
+        self.opposite_cap = 'Bid'
         self.last_order = None
         self.best_bid = 300.0 + 0.05
         self.best_ask = 300.0 - 0.05
@@ -897,7 +930,7 @@ class Noise_Trader(Trader):
     def getorder(self, time, countdown, lob):
         order_array = []
         del_array = []
-        verbose = False
+        verbose = True
         self.update_best_prices(lob)
         # if len(self.orders) > 0:
         self.cross = False
@@ -906,9 +939,26 @@ class Noise_Trader(Trader):
             if random.random() < 0.5:
                 self.task = 'asks'
                 self.cap_task = 'Ask'
+                self.opposite_task = 'bids'
+                self.opposite_cap = 'Bid'
             else:
                 self.task = 'bids'
                 self.cap_task = 'Bid'
+                self.opposite_task = 'asks'
+                self.opposite_cap = 'Ask'
+
+            if lob['bids']['qty'] == 0 and lob['asks']['qty'] > 0:
+                self.task = 'bids'
+                self.cap_task = 'Bid'
+                self.opposite_task = 'asks'
+                self.opposite_cap = 'Ask'
+
+            elif lob['asks']['qty'] == 0 and lob['bids']['qty'] > 0:
+                self.task = 'asks'
+                self.cap_task = 'Ask'
+                self.opposite_task = 'bids'
+                self.opposite_cap = 'Bid'
+
 
             alpha_random = numpy.random.dirichlet(numpy.ones(3), size=1)
             alpha_sam = numpy.random.uniform(0, 1)
@@ -935,12 +985,15 @@ class Noise_Trader(Trader):
             if verbose:
                 print("___ NOISE ___ ")
             if alpha_sam <= alpha_m:
+                print("MARKET ORDER")
                 mean = 7
                 sd = 0.1
                 offset_uv = numpy.random.uniform(0, 1)
 
                 quantity = round(math.pow(math.e, mean + (sd * offset_uv)))
 
+                if quantity > int(lob[self.opposite_task]['qty']/2) > 0:
+                    quantity = int(lob[self.opposite_task]['qty']/2)
                 if self.task == 'bids':
                     price = self.best_ask
                 else:
@@ -952,9 +1005,9 @@ class Noise_Trader(Trader):
                                   quantity,
                                   time, -1, 'MKT')
                 order_array.append(order)
-                self.last_order = order
 
             elif alpha_m < alpha_sam <= alpha_l:
+                print("LIMIT ORDER")
                 mean = 8
                 sd = 0.7
                 offset_uv = numpy.random.uniform(0, 1)
@@ -1014,9 +1067,9 @@ class Noise_Trader(Trader):
                     price_percent_off = abs(float(xmin * power))
 
                     if self.task == 'bids':
-                        price = self.best_bid + (price_percent_off / 100)
+                        price = self.best_bid + (float(price_percent_off/100))
                     else:
-                        price = self.best_ask - (price_percent_off / 100)
+                        price = self.best_ask - (float(price_percent_off/100))
 
                     if price < 0:
                         price = 1
@@ -1030,6 +1083,7 @@ class Noise_Trader(Trader):
                     self.last_order = order
 
             else:
+                print("DELETE ORDER")
                 if self.last_order != None:
                     print("NOISE TRADER : Cancel Order : " + str(self.last_order))
                     del_array.append(self.last_order)

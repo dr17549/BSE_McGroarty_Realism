@@ -45,7 +45,7 @@
 
 # could import pylab here for graphing etc
 
-import sys
+import os
 import math
 import random
 from BSE_Traders import populate_market, trade_stats
@@ -131,8 +131,9 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dum
         mcg_order_counter['LIQ_ASK'] = 0
         mcg_order_counter['NOISE_BID'] = 0
         mcg_order_counter['NOISE_ASK'] = 0
-        last_best_ask = 0
-        last_best_bid = 0
+        mcg_order_counter['NOISE_DEL'] = 0
+        last_best_ask = 300 - 0.05
+        last_best_bid = 300 + 0.05
         if verbose: print('\n%s;  ' % (sess_id))
 
         while time < endtime:
@@ -157,16 +158,15 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dum
                 # for i in range(0,1):
                 # tid = list(traders.keys())[random.randint(0, len(traders) - 1)]
 
-                # Osch style of randomness
-                # selection_rnd = random.random()
-                # if selection_rnd <= 0.05:
-                #         name = "LIQ"
-                # elif 0.05 < selection_rnd <= 0.2:
-                # # if selection_rnd <= 0.2:
-                #         name = "MARKET_M"
-                # else:
-                #  name = "NOISE"
-                name = "NOISE"
+                # # Osch style of randomness
+                selection_rnd = random.random()
+                if selection_rnd <= 0.05:
+                        name = "LIQ"
+                elif 0.05 < selection_rnd <= 0.2:
+                # if selection_rnd <= 0.2:
+                        name = "MARKET_M"
+                else:
+                        name = "NOISE"
                 mcg_order_counter[name] += 1
                 # name = mcg_types[random.randint(0, len(mcg_types) - 1)]
                 tid = id_by_traders[name][random.randint(0, len(id_by_traders[name]) - 1)]
@@ -197,6 +197,9 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dum
 
                 if len(orders_from_agent) > 0:
                         order_counter += 1
+                if traders[tid].ttype == 'NOISE':
+                        if len(need_to_delete_orders) > 0:
+                                mcg_order_counter['NOISE_DEL'] += 1
                 for order in orders_from_agent:
                         if order != None:
 
@@ -329,7 +332,8 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dum
                         last_best_ask = exchange.asks.best_price
                 if exchange.bids.best_price is not None:
                         last_best_bid = exchange.bids.best_price
-                if time % 250 == 0:
+                # if time % 5 == 0:
+                if True:
                                 mid_price = (last_best_ask + last_best_bid) / 2
                                 personal_print.append([time, mid_price])
 
@@ -345,6 +349,7 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dum
         print("LIQ BID ORDERS : " + str(mcg_order_counter['LIQ_BID']))
         print("NOISE ORDERS BID : " + str(mcg_order_counter['NOISE_BID']))
         print("NOISE ORDERS ASK : " + str(mcg_order_counter['NOISE_ASK']))
+        print("NOISE ORDERS DEL : " + str(mcg_order_counter['NOISE_DEL']))
         print("________________________________________________")
         print("TOTAL ASK ORD : " + str(ask_ord))
         print("TOTAL BUY ORD : " + str(buy_ord))
@@ -354,9 +359,13 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dum
         print("TOTAL CALLED : LIQ " + str(mcg_order_counter['LIQ']))
 
         # end of an experiment -- dump the tape
-        exchange.tape_dump('transaction.csv', 'w', 'keep')
-        print_trader_type_transac(personal_print, 'mid_price.csv')
-        print_trader_type_transac(price_from_noise, 'price_noise.csv')
+        # exchange.tape_dump('transaction.csv', 'w', 'keep')
+        # save_path = "Results/"
+        # file_name = os.path.join(save_path, 'mid_price' + str(sess_id) + '.csv')
+        # print_trader_type_transac(personal_print, file_name)
+        filename = "mid_price.csv"
+        print_trader_type_transac(personal_print, filename)
+        # print_trader_type_transac(price_from_noise, 'price_noise.csv')
         # print_trader_type_transac(plot_order_from_agents, 'agent_orders.csv')
 
 
@@ -504,8 +513,8 @@ def plot_transaction():
                                 x.append(float(row[0]))
                                 y.append(float(row[count]))
 
-        ax.plot(x,y, color='silver')
-        ax.scatter(x, y, s=3, color='g')
+        ax.plot(x,y, color='g')
+        # ax.scatter(x, y, s=3, color='g')
         ax.set_xlabel('Time')
         ax.set_ylabel('Transaction Price')
 
@@ -559,15 +568,15 @@ if __name__ == "__main__":
         min_n = 1
 
         trialnumber = 1
-        buyers_spec = [('LIQ', 0), ('GVWY', 0),
-                                                       ('ZIP', 0), ('MOMENTUM', 0), ('MARKET_M', 0),('MEAN_R', 0),('NOISE', 15)]
+        buyers_spec = [('LIQ', 6), ('GVWY', 0),
+                                                       ('ZIP', 0), ('MOMENTUM', 0), ('MARKET_M', 6),('MEAN_R', 0),('NOISE', 20)]
         sellers_spec = buyers_spec
         traders_spec = {'sellers':sellers_spec, 'buyers':buyers_spec}
 
+        # for trialnumber in range(1,20):
 
-        trial_id = 'trial%07d' % trialnumber
-        market_session(trial_id, start_time, end_time, traders_spec,
-                       order_sched, tdump, False, False)
+        market_session(trialnumber, start_time, end_time, traders_spec,
+                               order_sched, tdump, False, False)
         plot_transaction()
         tdump.flush()
         
