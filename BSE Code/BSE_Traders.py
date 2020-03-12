@@ -1084,9 +1084,9 @@ class Noise_Trader(Trader):
                     price_percent_off = abs(float(xmin * power))
 
                     if self.task == 'bids':
-                        price = self.best_bid + (float(price_percent_off) * self.best_bid)
+                        price = self.best_bid + (float(price_percent_off))
                     else:
-                        price = self.best_ask - (float(price_percent_off) * self.best_ask)
+                        price = self.best_ask - (float(price_percent_off))
 
                     if price < 0:
                         price = 1
