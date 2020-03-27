@@ -302,7 +302,7 @@ class Exchange(Orderbook):
         public_data['bids'] = {'best': self.bids.best_price,
                                'worst': self.bids.worstprice,
                                'n': self.bids.n_orders,
-                               'qty': self.asks.best_qty,
+                               'qty': self.bids.best_qty,
                                'lob': self.bids.lob_anon}
         public_data['asks'] = {'best': self.asks.best_price,
                                'worst': self.asks.worstprice,
