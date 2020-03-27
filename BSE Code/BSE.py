@@ -101,6 +101,7 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dum
 
         time = starttime
 
+        bids_and_ask = []
         orders_verbose = False
         lob_verbose = False
         process_verbose = False
@@ -202,6 +203,11 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dum
                                 mcg_order_counter['NOISE_DEL'] += 1
                 for order in orders_from_agent:
                         if order != None:
+
+                                if order.otype == "Ask":
+                                        bids_and_ask.append("Ask")
+                                else:
+                                        bids_and_ask.append("Bid")
 
                                 # print statistics
                                 # ---------------------------------------------------
@@ -324,7 +330,7 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dum
                                         # NB respond just updates trader's internal variables
                                         # doesn't alter the LOB, so processing each trader in
                                         # sequence (rather than random/shuffle) isn't a problem
-                                        traders[t].respond(time, lob, trade, respond_verbose)
+                                        traders[t].respond(time, lob, trade, respond_verbose, bids_and_ask)
 
                 # check_market_and_agent_integrity(exchange, traders, mcg_names)
                 time = time + timestep
@@ -333,11 +339,11 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dum
                 if exchange.bids.best_price is not None:
                         last_best_bid = exchange.bids.best_price
                 # if time % 5 == 0:
-                if True:
+                if time % 2 == 0:
                                 mid_price = (last_best_ask + last_best_bid) / 2
                                 personal_print.append([time, mid_price])
 
-        print("END OF TRANSACTION DAY")
+        print("END OF TRANSACTION DAY : trial # " + str(sess_id))
         print("_____________RESULTS_____________________")
         print("ROUNDS THAT ORDER IS NOT empty : " + str(order_counter))
         print("Time Counter : " + str(time_counter))
@@ -357,12 +363,12 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dum
         print("TOTAL CALLED : MARKET M " + str(mcg_order_counter['MARKET_M']))
         print("TOTAL CALLED : NOISE " + str(mcg_order_counter['NOISE']))
         print("TOTAL CALLED : LIQ " + str(mcg_order_counter['LIQ']))
-
         # end of an experiment -- dump the tape
         # exchange.tape_dump('transaction.csv', 'w', 'keep')
         # save_path = "Results/"
         # file_name = os.path.join(save_path, 'mid_price' + str(sess_id) + '.csv')
         # print_trader_type_transac(personal_print, file_name)
+
         filename = "mid_price.csv"
         print_trader_type_transac(personal_print, filename)
         # print_trader_type_transac(price_from_noise, 'price_noise.csv')
@@ -517,6 +523,7 @@ def plot_transaction():
         # ax.scatter(x, y, s=3, color='g')
         ax.set_xlabel('Time')
         ax.set_ylabel('Transaction Price')
+        ax.set_ylim([298.5, 301])
 
         # ax.plot(time, eq,'g')
 
@@ -568,12 +575,10 @@ if __name__ == "__main__":
         min_n = 1
 
         trialnumber = 1
-        buyers_spec = [('LIQ', 6), ('GVWY', 0),
-                                                       ('ZIP', 0), ('MOMENTUM', 0), ('MARKET_M', 6),('MEAN_R', 0),('NOISE', 20)]
+        buyers_spec = [('LIQ', 10), ('GVWY', 0),
+                                                       ('ZIP', 0), ('MOMENTUM', 0), ('MARKET_M', 20),('MEAN_R', 0),('NOISE', 20)]
         sellers_spec = buyers_spec
         traders_spec = {'sellers':sellers_spec, 'buyers':buyers_spec}
-
-        # for trialnumber in range(1,20):
 
         market_session(trialnumber, start_time, end_time, traders_spec,
                                order_sched, tdump, False, False)
