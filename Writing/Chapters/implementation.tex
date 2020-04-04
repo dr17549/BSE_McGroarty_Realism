@@ -1,7 +1,7 @@
 % \begin{document}
 
 % \section{Introducing realism into BSE}
-As introduced by the background, the project intends to investigate the idea of improving an aspect of the simulation to mimic real financial stock exchange environment. To do this, it has taken a step in introducing other players in the financial market and rearrangement of the time step. In the past, the experiments to look at market economics, allocative efficiency and trader agent dominance were done between agents themselves but rarely with other types of players in the market. By conducting the experiments with McG agents, which claims to mimic real financial trading behaviour, may give a better insight on how well the existing trading agents will perform in a realistic market. 
+As introduced by the background, the project intends to investigate the idea of improving an aspect of the simulation to mimic real financial stock exchange environment. To do this, it has taken a step in introducing other players in the financial market and rearrangement of the action-step. In the past, the experiments to look at market economics, allocative efficiency and trader agent dominance were done between agents themselves but rarely with other types of players in the market. By conducting the experiments with McG agents, which claims to mimic real financial trading behaviour, may give a better insight on how well the existing trading agents will perform in a realistic market. 
 
 \section{McG's Agents}
 A short description of McG can be described in the table below.
@@ -21,7 +21,7 @@ Momentum trader & Submit order depending on the current momentum ROC. If the ROC
 \newline $\kappa$ : threshold of bid and sell
 \newline $W_{a,t}$ : Wealth of agent at time t} \\ 
 \hline
-Mean reversion trader & Mean reversion trader executes order based on the assumption that price level will revert back to their original average. This is by calculating the exponential moving average and updating it at each time step.  
+Mean reversion trader & Mean reversion trader executes order based on the assumption that price level will revert back to their original average. This is by calculating the exponential moving average and updating it at each action step.  
 & {$ema_t$ : exponential moving average at time t
 \newline $\sigma$ : coefficient 
 \newline $v_{m}r$ : initial volume 
@@ -58,7 +58,7 @@ Market makers are traders who attempt to earn a profit by taking advantage of th
   }
 \EndIf
 Update buy/sell prediction with w-period rolling mean\; 
-\caption{{\sc Market maker adapted from McG (4.1) \cite{McGroarty}} }
+\caption{{\sc Market maker reproduced from McG (4.1) \cite{McGroarty}} }
 \label{algo:max}
 \end{algorithm}
 
@@ -92,7 +92,7 @@ Liquidity consumer represents large financial institution that makes trading dec
     $h_t = h_t - 1$\;  
   }
 \EndIf
-\caption{{\sc Liquidity consumer adapted from McG (4.2) \cite{McGroarty} }}
+\caption{{\sc Liquidity consumer reproduced from McG (4.2) \cite{McGroarty} }}
 \label{algo:max}
 \end{algorithm}
 
@@ -120,7 +120,7 @@ where $W_{a,t}$ is the wealth of the agent at time $t$.
   }
 \EndIf
 Update ROC $roc_t = \frac{p_t - p_{t-n_r}}{p_{t-n_r}}$\;  
-\caption{{\sc Momentum trader adapted from McG (4.3) \cite{McGroarty} } }
+\caption{{\sc Momentum trader reproduced from McG (4.3) \cite{McGroarty} } }
 \label{algo:max}
 \end{algorithm}
 
@@ -143,7 +143,7 @@ Mean reversion trader executes order based on the assumption that price level wi
   }
 \EndIf
 Update $ema_t$ = $ema_{(t-1)} - \alpha(p_t - ema_{(t-1)}$
-\caption{{\sc Mean reversion trader adapted from McG (4.4) \cite{McGroarty}} }
+\caption{{\sc Mean reversion trader reproduced from McG (4.4) \cite{McGroarty}} }
 \label{algo:max}
 \end{algorithm}
 
@@ -161,7 +161,7 @@ In the case where a limit order is chosen, the price is determined by these four
   \item With probability $\lambda_{offspr}$ places an order with price distributed with:  
   \[ xmin_{offspr} * (1-u_0)^{-\frac{1}{\beta - 1}} \]
 \end{itemize}
-The condition is that $\lambda_{crs} + \lambda_{inspr} + \lambda_{spr} + \lambda_{offspr} = 1$ to prevent spurious price movement in addition to the volume $v_mr$ limited up to half of the available volume at the side of the book. 
+The condition is that $\lambda_{crs} + \lambda_{inspr} + \lambda_{spr} + \lambda_{offspr} = 1$ to prevent spurious price movement in addition to the volume $v_mr$ limited up to half of the available volume at the side of the book. The noise agent must also make sure that no side of the book is empty and submit orders accordingly. 
 
 \begin{algorithm}[H]
 \DontPrintSemicolon 
@@ -194,7 +194,7 @@ The condition is that $\lambda_{crs} + \lambda_{inspr} + \lambda_{spr} + \lambda
     }
   }
 \EndIf
-\caption{{\sc Noise trader adapted from McG (4.5) \cite{McGroarty}} }
+\caption{{\sc Noise trader reproduced from McG (4.5) \cite{McGroarty}} }
 \end{algorithm}
 
 \section{BSE and McG price assignments}
@@ -214,25 +214,19 @@ In the new implementation which this project is trying to achieve is finding a w
 
 \begin{itemize}
     \item  \textbf{Quantity} : The current version of the BSE does not support orders with quantity more than 1. This has to be change because all of McGroarty et al. agents require their market to be able to receive orders with quantity more than 1. 
-    \item  \textbf{Accepting more than one order per round}: In the current version, the BSE only accepts one order randomly from an agent in a time step. Agents such as the Market maker must be able to submit more than one order in every round. 
+    \item  \textbf{Accepting more than one order per round}: In the current version, the BSE only accepts one order randomly from an agent in a action step. Agents such as the Market maker must be able to submit more than one order in every round. 
     \item \textbf{Deleting an order} : The current version of the BSE does not fully support an agent cancelling their order directly. This has to be implemented as a part of the system since McGroarty et al. agents are capable of cancelling an order.
 \end{itemize} 
 
 \section{Best Price in the BSE}
-Some of McG's agents depend on the ``best price" of a side of the book in order to submit an order. However, unlike the real exchange market, the BSE does not always provide that, more specifically in the beginning of the trading day. This means that there must be some unavoidable modifications to the McG's agents condition regarding order submission. There are multiple approaches in which the project will explore, including:
+Some of McG's agents depend on the ``best price" of a side of the book in order to submit an order. However, unlike the real exchange market, the BSE does not always provide that, more specifically in the beginning of the trading day. This means that there must be some unavoidable modifications to the McG's agents condition regarding order submission. Instead of receiving the best price in each iteration from the LOB directly, the agents themselves will store their own best prices, both ask and bid. These values will be updated each time an order is processed and at the end of each action-step. 
 
-\begin{itemize}
-    \item \textbf{Not submitting if only the worst price is available} This simple makes sense because if the agent submits at the worst price, it is essentially making a loss, thus not a smart decision in any case. By skipping the round and waiting for the right market price is what any normal trader would do. However, this poses a problem when running the McG agents in a homogeneous market because in the BSE, the best price is will not be available until an agent submits an order. If none of the McG submits an order, the system will enter a loop where none of the agents will ever submit an order and the best price will never be avaialble. 
-    
-    \item \textbf{Using the worst price with linear modification} * I'm not sure how to do this one yet so I'll be writing this one later
-    
-    \item \textbf{Ensure that best price value is available at every iteration of the BSE} This means that the agent will always submit a constant (e.g. 100) whenever the best price is not available but they decide to submit an order. 
-\end{itemize} 
+
 
 \section{Time-step and real market dynamics}
-The BSE time-step is easier to understand by giving an example. In a 300 BSE time-step, it is further divided into smaller steps which is equal to the total agents in the market. For example, if there are total of 14 agents in the market, the total number of time-steps in the 300 time period is $300 * 14 = 4200$. In these smaller time step, an agent is chosen randomly to act in each time-step. 
+The BSE time-step is easier to understand by giving an example. In a 300 BSE time-step, it is further divided into smaller steps which is equal to the total agents in the market. For example, if there are total of 14 agents in the market, the total number of time-steps in the 300 time period is $300 * 14 = 4200$. In these smaller time-step, an agent is chosen randomly to act in each time-step. 
 
-In their paper, McG suggests that a new system to selecting agents will lead to a more realistic market. Unlike the BSE, the McG ensures that each agent has to act in every time-step. However, this is also dependent on a probability because in the real market, even if the price changes, not every high-frequency will be able to follow up and act on it. The probability is implemented based on this assumption. In addition, while BSE agents are required to submit an order if they are selected, the McG agents have two other options of submitting nothing or cancel their order(s). 
+In their paper, McG suggests that a new system to selecting agents will lead to a more realistic market. Unlike the BSE, the McG ensures that each agent has to act in every action-step. However, this is also dependent on a probability because in the real market, even if the price changes, not every high-frequency will be able to follow up and act on it. The probability is implemented based on this assumption. In addition, while BSE agents are required to submit an order if they are selected, the McG agents have two other options of submitting nothing or cancel their order(s). 
 
 However, this leads to a slight problem. By implementing McG style of agent selection without probability of acting,the number of orders in the market will increase which leads to agents such as ZI-P not converging to the equilibrium correctly. This can be solved by introducing the probability of acting for each agent, much like the McG agents. A detailed investigation is presented in section 4.3. 
 

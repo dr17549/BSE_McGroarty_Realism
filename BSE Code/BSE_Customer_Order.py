@@ -143,7 +143,7 @@ def customer_orders_new(time, last_update, traders, trader_stats, os, pending, v
 
     n_buyers = trader_stats['n_buyers']
     n_sellers = trader_stats['n_sellers']
-    mcGagents = ['LIQ', 'NOISE', 'MARKET_M', 'MOMENTUM', 'MEAN_R']
+    mcGagents = ['LIQ', 'NOISE', 'MARKET_M', 'MOMENTUM', 'MEAN_R', "SMB" , "SMS"]
     shuffle_times = True
 
     cancellations = []
