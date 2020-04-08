@@ -56,7 +56,7 @@ from BSE_Customer_Order import customer_orders, customer_orders_new
 import pandas as pd
 import sys
 import matplotlib.pyplot as plt
-import numpy
+import numpy as np
 import csv
 ticksize = 1  # minimum change in price, in cents/pennies
 
@@ -85,15 +85,15 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dum
         # create a bunch of traders
         traders = {}
         trader_stats = populate_market(trader_spec, traders, True, verbose)
-        mcg_names = ['MARKET_M', "LIQ", "NOISE", "MOMENTUM", "MEAN_R"]
-        mcg_types = ['MARKET_M', "LIQ", "NOISE"]
-        id_by_traders = traders_by_type(traders, mcg_types)
+        mcg_names = ['MARKET_M', "LIQ", "NOISE", "MOMENTUM", "MEAN_R", "SMB", "SMS"]
 
 
         # timestep set so that can process all traders in one second
         # NB minimum interarrival time of customer orders may be much less than this!! 
         # timestep = 1.0 / float(trader_stats['n_buyers'] + trader_stats['n_sellers'])
         timestep = 1.0
+        print_time = 0
+        print_time_step = 1.0 / float(trader_stats['n_buyers'] + trader_stats['n_sellers'])
 
         duration = float(endtime - starttime)
 
@@ -109,15 +109,23 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dum
         inside_trade_verbose = False
         bad_mid_price = 0
 
+        id_by_trader = traders_by_type(traders, mcg_names)
+
         personal_print = []
         pending_cust_orders = []
         plot_order_from_agents = []
         price_from_noise = []
+        bids_and_ask = []
+        ask_order = []
+        bid_order = []
+        list_ema = []
+        qty_and_time = []
+        price_swing_info = []
 
+        # statistics variables
         order_counter = 0
         time_counter = 0
         trades_num = 0
-        two_bad = 0
         ask_ord = 0
         buy_ord = 0
         mcg_order_counter = {}
@@ -127,15 +135,28 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dum
 
         mcg_order_counter['MARKET_M_BID'] = 0
         mcg_order_counter['MARKET_M_ASK'] = 0
+        mcg_order_counter['MEAN_R_ASK'] = 0
+        mcg_order_counter['MEAN_R_BID'] = 0
+        mcg_order_counter['MMT_ASK'] = 0
+        mcg_order_counter['MMT_BID'] = 0
         mcg_order_counter['LIQ_BID'] = 0
         mcg_order_counter['LIQ_ASK'] = 0
         mcg_order_counter['NOISE_BID'] = 0
         mcg_order_counter['NOISE_ASK'] = 0
         mcg_order_counter['NOISE_DEL'] = 0
-        last_best_ask = 300 - 0.05
-        last_best_bid = 300 + 0.05
+        mcg_order_counter['SMB'] = 0
+        mcg_order_counter['SMS'] = 0
+        mcg_order_counter['MMT_QTY'] = 0
+        mcg_order_counter['MEAN_R_QTY'] = 0
+
+        last_best_ask = 100 - 0.05
+        last_best_bid = 100 + 0.05
+        record_ask_price = 100 - 0.05
+        record_bid_price = 100 + 0.05
+
         if verbose: print('\n%s;  ' % (sess_id))
 
+        # begin loop
         while time < endtime:
                 time_counter += 1
                 # how much time left, as a percentage?
@@ -154,178 +175,194 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dum
                                         exchange.del_order(time, traders[kill].lastquote, verbose)
 
                 # tid = list(traders.keys())[random.randint(0, len(traders) - 1)]
-                # for tid in list(traders.keys()):
-                # for i in range(0,1):
-                # tid = list(traders.keys())[random.randint(0, len(traders) - 1)]
+                for tid in list(traders.keys()):
+                        orders_from_agent, need_to_delete_orders = traders[tid].getorder(time, time_left, exchange.publish_lob(time, lob_verbose))
 
-                # # Osch style of randomness
-                selection_rnd = random.random()
-                if selection_rnd <= 0.05:
-                        name = "LIQ"
-                elif 0.05 < selection_rnd <= 0.2:
-                # if selection_rnd <= 0.2:
-                        name = "MARKET_M"
-                else:
-                        name = "NOISE"
-                mcg_order_counter[name] += 1
-                # name = mcg_types[random.randint(0, len(mcg_types) - 1)]
-                tid = id_by_traders[name][random.randint(0, len(id_by_traders[name]) - 1)]
-                orders_from_agent, need_to_delete_orders = traders[tid].getorder(time, time_left, exchange.publish_lob(time, lob_verbose))
-
-                # need to delete orders before going further
-                if len(need_to_delete_orders) > 0:
-                        for to_be_del_orders in need_to_delete_orders:
-                                # print("BSE MAIN : DEL " + str(to_be_del_orders))
-                                exchange.del_order(time,to_be_del_orders,process_verbose)
-
-
-                # if verbose: print('Trader Quote: %s' % (order))
-                if len(orders_from_agent) > 0:
-                        del_array = []
-                        del_in_exchange = []
-                        for temp_ord in range(len(traders[tid].orders)):
-                                if (traders[tid].orders[temp_ord].qid >= 0):
-                                        del_array.append(temp_ord)
-                                        del_in_exchange.append(traders[tid].orders[temp_ord])
-
-                        del_array.sort(reverse=True)
-                        for i in del_array:
-                                del traders[tid].orders[i]
-                        for d_ord in del_in_exchange:
-                                exchange.del_order(time,d_ord,True)
-
-
-                if len(orders_from_agent) > 0:
-                        order_counter += 1
-                if traders[tid].ttype == 'NOISE':
+                        # need to delete orders before going further
                         if len(need_to_delete_orders) > 0:
-                                mcg_order_counter['NOISE_DEL'] += 1
-                for order in orders_from_agent:
-                        if order != None:
+                                for to_be_del_orders in need_to_delete_orders:
+                                        # print("BSE MAIN : DEL " + str(to_be_del_orders))
+                                        exchange.del_order(time,to_be_del_orders,process_verbose)
 
-                                # print statistics
-                                # ---------------------------------------------------
 
-                                plot_order_from_agents.append([time, order.price])
-                                if traders[tid].ttype == 'MARKET_M':
+                        # if verbose: print('Trader Quote: %s' % (order))
+                        if len(orders_from_agent) > 0:
+                                del_array = []
+                                del_in_exchange = []
+                                for temp_ord in range(len(traders[tid].orders)):
+                                        if (traders[tid].orders[temp_ord].qid >= 0):
+                                                del_array.append(temp_ord)
+                                                del_in_exchange.append(traders[tid].orders[temp_ord])
+
+                                del_array.sort(reverse=True)
+                                for i in del_array:
+                                        del traders[tid].orders[i]
+                                for d_ord in del_in_exchange:
+                                        exchange.del_order(time,d_ord,True)
+
+
+                        if traders[tid].ttype == 'NOISE':
+                                if len(need_to_delete_orders) > 0:
+                                        mcg_order_counter['NOISE_DEL'] += 1
+                        for order in orders_from_agent:
+                                exchange_before = exchange
+                                if exchange.asks.best_price is not None:
+                                        record_ask_price = exchange.asks.best_price
+                                if exchange.bids.best_price is not None:
+                                        record_bid_price = exchange.bids.best_price
+                                if order != None:
+
                                         if order.otype == "Ask":
-                                                mcg_order_counter['MARKET_M_ASK'] += 1
+                                                bids_and_ask.append("Ask")
                                         else:
-                                                mcg_order_counter['MARKET_M_BID'] += 1
+                                                bids_and_ask.append("Bid")
+                                        # print statistics
+                                        # ---------------------------------------------------
 
-                                if traders[tid].ttype == 'LIQ':
+                                        if traders[tid].ttype == 'SMB' and order.otype == "Bid":
+                                                mcg_order_counter['SMB'] += 1
+                                        if traders[tid].ttype == 'SMS' and order.otype == "Ask":
+                                                mcg_order_counter['SMS'] += 1
+                                        plot_order_from_agents.append([time, order.price])
+
+                                        if traders[tid].ttype == 'MEAN_R':
+                                                mcg_order_counter['MEAN_R_QTY'] += order.qty
+                                                if order.otype == "Bid":
+                                                        mcg_order_counter['MEAN_R_BID'] += 1
+                                                        bid_order.append([time, order.price])
+
+                                                else:
+                                                        mcg_order_counter['MEAN_R_ASK'] += 1
+                                                        ask_order.append([time, order.price])
+                                                print_time += print_time_step
+
+                                        if traders[tid].ttype == 'MARKET_M':
+                                                if order.otype == "Ask":
+                                                        mcg_order_counter['MARKET_M_ASK'] += 1
+                                                else:
+                                                        mcg_order_counter['MARKET_M_BID'] += 1
+
+                                        if traders[tid].ttype == 'MOMENTUM':
+                                                mcg_order_counter['MMT_QTY'] += order.qty
+                                                qty_and_time.append([time,order.qty])
+                                                if order.otype == "Ask":
+                                                        mcg_order_counter['MMT_ASK'] += 1
+                                                else:
+                                                        mcg_order_counter['MMT_BID'] += 1
+
+                                        if traders[tid].ttype == 'LIQ':
+                                                if order.otype == "Ask":
+                                                        mcg_order_counter['LIQ_ASK'] += 1
+                                                else:
+                                                        mcg_order_counter['LIQ_BID'] += 1
+
+                                        if traders[tid].ttype == 'NOISE':
+                                                price_from_noise.append([time, order.price])
+                                                if order.otype == "Ask":
+                                                        mcg_order_counter['NOISE_ASK'] += 1
+                                                else:
+                                                        mcg_order_counter['NOISE_BID'] += 1
+
+
                                         if order.otype == "Ask":
-                                                mcg_order_counter['LIQ_ASK'] += 1
+                                                ask_ord += 1
                                         else:
-                                                mcg_order_counter['LIQ_BID'] += 1
+                                                buy_ord += 1
+                                        # ---------------------------------------------------
 
-                                if traders[tid].ttype == 'NOISE':
-                                        price_from_noise.append([time, order.price])
-                                        if order.otype == "Ask":
-                                                mcg_order_counter['NOISE_ASK'] += 1
-                                        else:
-                                                mcg_order_counter['NOISE_BID'] += 1
+                                        print("________ ORDER FROM AGENT ________")
+                                        print(str(order))
+                                        traders[tid].n_quotes = 1
 
+                                        for temp_id in list(traders.keys()):
+                                                most_recent_order = 0
 
-                                if order.otype == "Ask":
-                                        ask_ord += 1
-                                else:
-                                        buy_ord += 1
-                                # ---------------------------------------------------
+                                                if traders[temp_id].ttype not in mcg_names:
 
-                                print("________ ORDER FROM AGENT ________")
-                                print(str(order))
-                                traders[tid].n_quotes = 1
+                                                        for iter_ord in traders[temp_id].orders:
+                                                                if iter_ord.qid < 0 and iter_ord.time > most_recent_order:
+                                                                        most_recent_order = iter_ord.time
 
-                                for temp_id in list(traders.keys()):
-                                        most_recent_order = 0
-
-                                        if traders[temp_id].ttype not in mcg_names:
-
-                                                for iter_ord in traders[temp_id].orders:
-                                                        if iter_ord.qid < 0 and iter_ord.time > most_recent_order:
-                                                                most_recent_order = iter_ord.time
-
-                                                del_array = []
-                                                for iter_ord in range(len(traders[temp_id].orders)):
-                                                        if traders[temp_id].orders[iter_ord].time < most_recent_order:
-                                                                del_array.append(iter_ord)
-
-                                                del_array.sort(reverse=True)
-                                                for i in del_array:
-                                                        del traders[temp_id].orders[i]
-
-                                        else:
-                                                for iter_ord in traders[temp_id].orders:
-                                                        if iter_ord.qid < 0 and iter_ord.time > most_recent_order:
-                                                                most_recent_order = iter_ord.time
-
-                                                del_array = []
-                                                for iter_ord in range(len(traders[temp_id].orders)):
-                                                        if traders[temp_id].orders[iter_ord].time < most_recent_order \
-                                                                and traders[temp_id].orders[iter_ord].qid < 0:
+                                                        del_array = []
+                                                        for iter_ord in range(len(traders[temp_id].orders)):
+                                                                if traders[temp_id].orders[iter_ord].time < most_recent_order:
                                                                         del_array.append(iter_ord)
-                                                del_array.sort(reverse=True)
-                                                for i in del_array:
-                                                        del traders[temp_id].orders[i]
 
+                                                        del_array.sort(reverse=True)
+                                                        for i in del_array:
+                                                                del traders[temp_id].orders[i]
 
-                                # check for orders inside the agent object
-                                # __________________________________________________________________________
-                                check_no_exceeding_orders(traders)
-                                check_for_double_qid(traders)
-                                # __________________________________________________________________________
-
-
-                                # now we kill the orders that is less than the current one
-                                # send order to exchange
-                                if order.qty < 1:
-                                        sys.exit("Order Quantity cannot be 0")
-
-
-                                transac_record, actual_quantity_traded = exchange.process_order2(time, order, process_verbose)
-
-                                if len(transac_record) != 0:
-                                        traders[tid].add_order(order, False)
-
-                                        for trade in transac_record:
-                                                trades_num += 1
-
-                                                # if verbose:
-                                                #         print_ba_bookkeep(traders, trade,"___ BEFORE BOOK KEEP : TRADE FROM AGENTS ____ ")
-                                                if traders[trade['party1']].ttype not in mcg_names:
-                                                        traders[trade['party1']].bookkeep(trade, order,
-                                                                                          bookkeep_verbose, time)
                                                 else:
-                                                        traders[trade['party1']].bookkeep_new(trade, order, bookkeep_verbose, time, actual_quantity_traded,trade['del_party1'])
+                                                        for iter_ord in traders[temp_id].orders:
+                                                                if iter_ord.qid < 0 and iter_ord.time > most_recent_order:
+                                                                        most_recent_order = iter_ord.time
 
-                                                if traders[trade['party2']].ttype not in mcg_names:
-                                                        traders[trade['party2']].bookkeep(trade, order,
-                                                                                          bookkeep_verbose, time)
-                                                else:
-                                                        traders[trade['party2']].bookkeep_new(trade, order, bookkeep_verbose, time, actual_quantity_traded,trade['del_party2'])
+                                                        del_array = []
+                                                        for iter_ord in range(len(traders[temp_id].orders)):
+                                                                if traders[temp_id].orders[iter_ord].time < most_recent_order \
+                                                                        and traders[temp_id].orders[iter_ord].qid < 0:
+                                                                                del_array.append(iter_ord)
+                                                        del_array.sort(reverse=True)
+                                                        for i in del_array:
+                                                                del traders[temp_id].orders[i]
 
-                                                if dump_each_trade: trade_stats(sess_id, traders, tdump, time, exchange.publish_lob(time, lob_verbose))
 
-                                                # check if the MKT order is still in the agent personal order, if yes, must be removed
-                                                if order.ostyle == 'MKT':
-                                                        for temp_ord in traders[tid].orders:
-                                                                if temp_ord.qid == order.qid:
-                                                                        traders[tid].orders.remove(temp_ord)
-                                # if there is no trade
-                                else:
-                                        if order.ostyle == 'LIM' and traders[tid].ttype in mcg_names:
+                                        # check for orders inside the agent object
+                                        # __________________________________________________________________________
+                                        check_no_exceeding_orders(traders)
+                                        check_for_double_qid(traders)
+                                        # __________________________________________________________________________
+
+
+                                        # now we kill the orders that is less than the current one
+                                        # send order to exchange
+                                        if order.qty < 1:
+                                                sys.exit("Order Quantity cannot be 0")
+
+
+                                        transac_record, actual_quantity_traded = exchange.process_order2(time, order, process_verbose)
+
+                                        if len(transac_record) != 0:
                                                 traders[tid].add_order(order, False)
 
-                                # traders respond to whatever happened
-                                lob = exchange.publish_lob(time, lob_verbose)
+                                                for trade in transac_record:
+                                                        trades_num += 1
 
-                                for t in traders:
-                                        # NB respond just updates trader's internal variables
-                                        # doesn't alter the LOB, so processing each trader in
-                                        # sequence (rather than random/shuffle) isn't a problem
-                                        traders[t].respond(time, lob, trade, respond_verbose)
+                                                        # if verbose:
+                                                        #         print_ba_bookkeep(traders, trade,"___ BEFORE BOOK KEEP : TRADE FROM AGENTS ____ ")
+                                                        if traders[trade['party1']].ttype not in mcg_names:
+                                                                traders[trade['party1']].bookkeep(trade, order,
+                                                                                                  bookkeep_verbose, time)
+                                                        else:
+                                                                traders[trade['party1']].bookkeep_new(trade, order, bookkeep_verbose, time, actual_quantity_traded,trade['del_party1'])
 
+                                                        if traders[trade['party2']].ttype not in mcg_names:
+                                                                traders[trade['party2']].bookkeep(trade, order,
+                                                                                                  bookkeep_verbose, time)
+                                                        else:
+                                                                traders[trade['party2']].bookkeep_new(trade, order, bookkeep_verbose, time, actual_quantity_traded,trade['del_party2'])
+
+                                                        if dump_each_trade: trade_stats(sess_id, traders, tdump, time, exchange.publish_lob(time, lob_verbose))
+
+                                                        # check if the MKT order is still in the agent personal order, if yes, must be removed
+                                                        if order.ostyle == 'MKT':
+                                                                for temp_ord in traders[tid].orders:
+                                                                        if temp_ord.qid == order.qid:
+                                                                                traders[tid].orders.remove(temp_ord)
+                                        # if there is no trade
+                                        else:
+                                                if order.ostyle == 'LIM' and traders[tid].ttype in mcg_names:
+                                                        traders[tid].add_order(order, False)
+
+                                        # traders respond to whatever happened
+                                        lob = exchange.publish_lob(time, lob_verbose)
+                                        for t in traders:
+                                                # NB respond just updates trader's internal variables
+                                                # doesn't alter the LOB, so processing each trader in
+                                                # sequence (rather than random/shuffle) isn't a problem
+                                                traders[t].respond(time, lob, trade, respond_verbose, bids_and_ask)
+                                        price_swing_info = record_price_swing(exchange, exchange_before, record_ask_price,
+                                                           record_bid_price, order, price_swing_info, order.ostyle, time)
                 # check_market_and_agent_integrity(exchange, traders, mcg_names)
                 time = time + timestep
                 if exchange.asks.best_price is not None:
@@ -338,39 +375,104 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dum
                                 personal_print.append([time, mid_price])
 
         print("END OF TRANSACTION DAY")
-        print("_____________RESULTS_____________________")
-        print("ROUNDS THAT ORDER IS NOT empty : " + str(order_counter))
+        print("_____________RESULTS____________________________")
         print("Time Counter : " + str(time_counter))
         print("Trades Num : " + str(trades_num))
         print("________________________________________________")
+        mm_total_bid = 0
+        mm_total_ask = 0
+        for momentum_id in id_by_trader['MARKET_M']:
+                n_bids_mm ,n_asks_mm = traders[momentum_id].return_submitted()
+                mm_total_ask = mm_total_ask + n_asks_mm
+                mm_total_bid = mm_total_bid + n_bids_mm
+        print("INNER LARGE ORDER MARKET M ASK ORDERS : " + str(mm_total_ask))
+        print("INNER LARGE ORDER MARKET M BID ORDERS : " + str(mm_total_bid))
         print("MARKET M ASK ORDERS : " + str(mcg_order_counter['MARKET_M_ASK']))
         print("MARKET M BID ORDERS : " + str(mcg_order_counter['MARKET_M_BID']))
         print("LIQ ASK ORDERS : " + str(mcg_order_counter['LIQ_ASK']))
         print("LIQ BID ORDERS : " + str(mcg_order_counter['LIQ_BID']))
+        print("MEAN_R BID ORDERS : " + str(len(bid_order)))
+        print("MEAN_R ASK ORDERS : " + str(len(ask_order)))
+        print("MOMENTUM BID ORDERS : " + str(mcg_order_counter['MMT_BID']))
+        print("MOMENTUM ASK ORDERS : " + str(mcg_order_counter['MMT_ASK']))
         print("NOISE ORDERS BID : " + str(mcg_order_counter['NOISE_BID']))
         print("NOISE ORDERS ASK : " + str(mcg_order_counter['NOISE_ASK']))
         print("NOISE ORDERS DEL : " + str(mcg_order_counter['NOISE_DEL']))
+        print("Mean R qty :  " + str(mcg_order_counter['MEAN_R_QTY']))
+        print("Momentum qty :  " + str(mcg_order_counter['MMT_QTY']))
+
+        # print("SMB ORDERS : " + str(mcg_order_counter['SMB']))
+        # print("SMS ORDERS : " + str(mcg_order_counter['SMS']))
         print("________________________________________________")
         print("TOTAL ASK ORD : " + str(ask_ord))
         print("TOTAL BUY ORD : " + str(buy_ord))
         print("________________________________________________")
-        print("TOTAL CALLED : MARKET M " + str(mcg_order_counter['MARKET_M']))
-        print("TOTAL CALLED : NOISE " + str(mcg_order_counter['NOISE']))
-        print("TOTAL CALLED : LIQ " + str(mcg_order_counter['LIQ']))
+        # for mean_r_id in id_by_trader['MEAN_R']:
+        #         list_ema = traders[mean_r_id].get_ema()
+        #         print_trader_type_transac(list_ema, "ema.csv")
+        # for mean_r_id in id_by_trader['MEAN_R']:
+        #         list_ema = traders[mean_r_id].get_cp()
+        #         print_trader_type_transac(list_ema, "mid_price.csv")
+
+        print("PRICE SWINGS " + str(len(price_swing_info)))
+        for swings in price_swing_info:
+                print(str(swings['time']) + " "  + str(swings['swing']) + " : "+ traders[swings['order'].tid].ttype + " " + str(swings['order_type'])
+                      + " " + str(swings['order'].qty))
 
         # end of an experiment -- dump the tape
-        # exchange.tape_dump('transaction.csv', 'w', 'keep')
-        # save_path = "Results/"
+        save_path = "Transactions/"
+        file_name = os.path.join(save_path, 'transaction_' + str(sess_id) + '.csv')
+        exchange.tape_dump(file_name, 'w', 'keep')
+        # running 30,000 or 10,000
+        # save_path = "noise_v2/"
         # file_name = os.path.join(save_path, 'mid_price' + str(sess_id) + '.csv')
         # print_trader_type_transac(personal_print, file_name)
+
+        #todo change this before running
         filename = "mid_price.csv"
         print_trader_type_transac(personal_print, filename)
+
+        save_path = "Results/"
+        file_name = os.path.join(save_path, 'mid_price_' + str(sess_id) + '.csv')
+        print_trader_type_transac(personal_print, file_name)
+
         # print_trader_type_transac(price_from_noise, 'price_noise.csv')
+        # print_trader_type_transac(qty_and_time, 'qty_mmt.csv')
+        print_trader_type_transac(ask_order, 'ask_order.csv')
+        print_trader_type_transac(bid_order, 'bid_order.csv')
+
+
+
         # print_trader_type_transac(plot_order_from_agents, 'agent_orders.csv')
 
 
         # write trade_stats for this experiment NB end-of-session summary only
         trade_stats(sess_id, traders, tdump, time, exchange.publish_lob(time, lob_verbose))
+
+def record_price_swing(exchange_current, exchange_before, record_ask_price, record_bid_price, order, price_swing_info, order_type, time):
+        prev_ask_price = record_ask_price
+        prev_bid_price = record_bid_price
+        if exchange_current.asks.best_price is not None:
+                record_ask_price = exchange_current.asks.best_price
+        if exchange_current.bids.best_price is not None:
+                record_bid_price = exchange_current.bids.best_price
+
+        prev_mid_price = (prev_ask_price + prev_bid_price) / 2
+        record_mid_price = (record_bid_price + record_ask_price) / 2
+        change = abs(record_mid_price - prev_mid_price)
+
+        if change >= 0.5:
+                record = {'prev_mid_price': prev_mid_price,
+                                       'record_mid_price': record_mid_price,
+                                       'prev_exchange': exchange_before,
+                                       'after_exchange': exchange_current,
+                                       'order': order,
+                                        'order_type' : order_type,
+                                        'time' : time,
+                                        'swing' : change}
+                price_swing_info.append(record)
+
+        return price_swing_info
 
 def print_ba_bookkeep(traders, trade, begin_string):
         print(begin_string)
@@ -497,31 +599,73 @@ def check_market_and_agent_integrity(exchange, traders, mcg_names):
 
 def plot_transaction():
         time_period = 100000
-        time = numpy.arange(0, time_period, 1).tolist()
+        time = np.arange(0, time_period, 1).tolist()
         eq = [180] * time_period
 
         df1 = pd.read_csv('BSE2.csv')
         col = len(df1.columns)
 
         fig, ax = plt.subplots(figsize=(10, 10))
+
         x = []
         y = []
         with open('mid_price.csv', 'r') as csvfile:
                 plots = csv.reader(csvfile, delimiter=',')
                 for count in range(1, col):
+                        skip = 0
                         for row in plots:
-                                x.append(float(row[0]))
-                                y.append(float(row[count]))
+                                if len(row) > 0:
+                                        x.append(float(row[0]))
+                                        y.append(float(row[count]))
+        # ax.scatter(x,y,s=3, color='black')
+        ax.plot(x, y, color='black', label='Mid Price')
 
-        ax.plot(x,y, color='g')
-        # ax.scatter(x, y, s=3, color='g')
+        # For mean reversion only
+        # x = []
+        # y = []
+        # with open('ema.csv', 'r') as csvfile:
+        #         plots = csv.reader(csvfile, delimiter=',')
+        #         for count in range(1, col):
+        #                 skip = 0
+        #                 for row in plots:
+        #                         if len(row) > 0:
+        #                                 x.append(float(row[0]))
+        #                                 y.append(float(row[count]))
+        # # ax.scatter(x,y,s=3, color='r')
+        # ax.plot(x, y, color='orange', label='Ema value')
+
+        # x = []
+        # y = []
+        # with open('bid_order.csv', 'r') as csvfile:
+        #         plots = csv.reader(csvfile, delimiter=',')
+        #         for count in range(1, col):
+        #                 skip = 0
+        #                 for row in plots:
+        #                         if len(row) > 0:
+        #                                 x.append(float(row[0]))
+        #                                 y.append(float(row[count]))
+        #                                 ax.axvline(x=float(row[0]), linewidth='0.5')
+        # ax.scatter(x, y, s=30, color='g', label = 'Bid orders')
+        #
+        # x = []
+        # y = []
+        # with open('ask_order.csv', 'r') as csvfile:
+        #         plots = csv.reader(csvfile, delimiter=',')
+        #         for count in range(1, col):
+        #                 skip = 0
+        #                 for row in plots:
+        #                         if len(row) > 0:
+        #                                 x.append(float(row[0]))
+        #                                 ax.axvline(x=float(row[0]), linewidth='0.5')
+        #                                 y.append(float(row[count]))
+        # ax.scatter(x, y, s=30, color='r', label='Ask orders')
+        # ax.plot(x,y, color='g')
+
         ax.set_xlabel('Time')
-        ax.set_ylabel('Transaction Price')
-
-        # ax.plot(time, eq,'g')
-
-        # ax.legend()
+        ax.set_ylabel('Price')
+        ax.legend(loc="lower left")
         plt.show()
+
 
 # # Below here is where we set up and run a series of experiments
 
@@ -531,7 +675,7 @@ if __name__ == "__main__":
         # set up parameters for the session
 
         start_time = 0.0
-        end_time = 100000.0
+        end_time = 10000.0
         duration = end_time - start_time
 
 
@@ -547,14 +691,14 @@ if __name__ == "__main__":
 
 
 
-        supply_schedule = [ {'from':start_time, 'to':end_time, 'ranges':[(10,130)], 'stepmode':'fixed'}
+        supply_schedule = [ {'from':start_time, 'to':end_time, 'ranges':[(0,200)], 'stepmode':'fixed'}
                           ]
 
-        demand_schedule = [ {'from':start_time, 'to':end_time, 'ranges':[(10,130)], 'stepmode':'fixed'}
+        demand_schedule = [ {'from':start_time, 'to':end_time, 'ranges':[(0,200)], 'stepmode':'fixed'}
                           ]
 
         order_sched = {'sup':supply_schedule, 'dem':demand_schedule,
-                       'interval': 30, 'timemode':'periodic'}
+                       'interval': 1860, 'timemode':'periodic'}
 
         # run a sequence of trials that exhaustively varies the ratio of four trader types
         # NB this has weakness of symmetric proportions on buyers/sellers -- combinatorics of varying that are quite nasty
@@ -567,16 +711,17 @@ if __name__ == "__main__":
 
         min_n = 1
 
-        trialnumber = 1
-        buyers_spec = [('LIQ', 6), ('GVWY', 0),
-                                                       ('ZIP', 0), ('MOMENTUM', 0), ('MARKET_M', 6),('MEAN_R', 0),('NOISE', 20)]
+        trialnumber = 3
+        buyers_spec = [('LIQ', 2), ('SMB', 0), ('SMS', 0),
+                                                       ('ZIP', 0), ('MOMENTUM', 5), ('MARKET_M', 2),('MEAN_R', 5),('NOISE', 5)]
+        # sellers_spec = [('LIQ', 0), ('SMB', 0), ('SMS', 0),
+        #                                                ('ZIP', 0), ('MOMENTUM', 0), ('MARKET_M', 0),('MEAN_R', 0),('NOISE', 2)]
         sellers_spec = buyers_spec
         traders_spec = {'sellers':sellers_spec, 'buyers':buyers_spec}
 
-        # for trialnumber in range(1,20):
-
-        market_session(trialnumber, start_time, end_time, traders_spec,
-                               order_sched, tdump, False, False)
+        for trialnumber in range(1,20):
+                market_session(trialnumber, start_time, end_time, traders_spec,
+                                       order_sched, tdump, False, False)
         plot_transaction()
         tdump.flush()
         
