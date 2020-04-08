@@ -8,6 +8,8 @@
 \usepackage{placeins}
 \usepackage{graphicx}
 \usepackage{fancyhdr}
+\usepackage{subcaption}
+\usepackage[toc,page]{appendix}
 
 \pagestyle{fancy}
 \fancyhead[L]{}
@@ -37,10 +39,21 @@
 \chapter{Testing} 
 \input{Dissertation/Chapters/testing}
 
-\chapter{Results} 
+\chapter{Base Line results and Initial tests} 
 \input{Dissertation/Chapters/results}
+
+\chapter{McG Agents individual results} 
+\input{Dissertation/Chapters/mcg_indv}
+
+\chapter{Market experiment results} 
+\input{Dissertation/Chapters/market_experiments}
 
 \bibliographystyle{plain} % We choose the "plain" reference style
 \bibliography{research} % Entries are in the "refs.bib" file
+
+\begin{appendices}
+\chapter{Individual Agents test results}
+\input{Dissertation/Appendix/indv_appen}
+\end{appendices}
 
 \end{document}
