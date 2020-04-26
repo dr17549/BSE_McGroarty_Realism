@@ -57,6 +57,7 @@ import pandas as pd
 import sys
 import matplotlib.pyplot as plt
 import numpy as np
+import statistics
 import csv
 ticksize = 1  # minimum change in price, in cents/pennies
 
@@ -75,7 +76,7 @@ def traders_by_type(traders, mcg_types):
         return id_by_trader
 
         # one session in the market
-def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dumpfile, dump_each_trade, verbose):
+def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dumpfile, dump_each_trade, verbose, save_path):
 
 
         # initialise the exchange
@@ -148,11 +149,12 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dum
         mcg_order_counter['SMS'] = 0
         mcg_order_counter['MMT_QTY'] = 0
         mcg_order_counter['MEAN_R_QTY'] = 0
+        mcg_order_counter['NOISE_QTY'] = 0
 
-        last_best_ask = 100 - 0.05
-        last_best_bid = 100 + 0.05
-        record_ask_price = 100 - 0.05
-        record_bid_price = 100 + 0.05
+        last_best_ask = 300 - 0.05
+        last_best_bid = 300 + 0.05
+        record_ask_price = 300 - 0.05
+        record_bid_price = 300 + 0.05
 
         if verbose: print('\n%s;  ' % (sess_id))
 
@@ -258,6 +260,7 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dum
 
                                         if traders[tid].ttype == 'NOISE':
                                                 price_from_noise.append([time, order.price])
+                                                mcg_order_counter['NOISE_QTY'] += order.qty
                                                 if order.otype == "Ask":
                                                         mcg_order_counter['NOISE_ASK'] += 1
                                                 else:
@@ -407,35 +410,49 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dum
         print("TOTAL ASK ORD : " + str(ask_ord))
         print("TOTAL BUY ORD : " + str(buy_ord))
         print("________________________________________________")
+
+        file1 = open(save_path + "mr_mt_stats.txt", "a")
+        file1.write("Session ID : " + str(sess_id))
+        file1.write("\n Noise Trader")
+        file1.write("\nNOISE ORDERS BID : " + str(mcg_order_counter['NOISE_BID']))
+        file1.write("\nNOISE ORDERS ASK : " + str(mcg_order_counter['NOISE_ASK']))
+        file1.write("\nNOISE ORDERS QTY : " + str(mcg_order_counter['NOISE_QTY']))
+        file1.write("\n Mean R")
+        file1.write("\nMEAN_R BID ORDERS : " + str(len(bid_order)))
+        file1.write("\nMEAN_R ASK ORDERS : " + str(len(ask_order)))
+        file1.write("\nMean R qty :  " + str(mcg_order_counter['MEAN_R_QTY']))
+        file1.write("\nMomentum Trader")
+        file1.write("\nMOMENTUM BID ORDERS : " + str(mcg_order_counter['MMT_BID']))
+        file1.write("\nMOMENTUM ASK ORDERS : " + str(mcg_order_counter['MMT_ASK']))
+        file1.write("\nMomentum qty :  " + str(mcg_order_counter['MMT_QTY']) + "\n\n")
+        file1.close()
+
         # for mean_r_id in id_by_trader['MEAN_R']:
         #         list_ema = traders[mean_r_id].get_ema()
         #         print_trader_type_transac(list_ema, "ema.csv")
         # for mean_r_id in id_by_trader['MEAN_R']:
         #         list_ema = traders[mean_r_id].get_cp()
         #         print_trader_type_transac(list_ema, "mid_price.csv")
-
+        mid_price_acc = calculate_acc_mid_price(personal_print, sess_id, save_path)
+        print("Mid price acc returns: " + str(mid_price_acc))
+        print("________________________________________________")
         print("PRICE SWINGS " + str(len(price_swing_info)))
         for swings in price_swing_info:
                 print(str(swings['time']) + " "  + str(swings['swing']) + " : "+ traders[swings['order'].tid].ttype + " " + str(swings['order_type'])
                       + " " + str(swings['order'].qty))
 
         # end of an experiment -- dump the tape
-        save_path = "Transactions/"
         file_name = os.path.join(save_path, 'transaction_' + str(sess_id) + '.csv')
         exchange.tape_dump(file_name, 'w', 'keep')
-        # running 30,000 or 10,000
-        # save_path = "noise_v2/"
-        # file_name = os.path.join(save_path, 'mid_price' + str(sess_id) + '.csv')
-        # print_trader_type_transac(personal_print, file_name)
 
-        #todo change this before running
+        # #todo change this before running
         filename = "mid_price.csv"
         print_trader_type_transac(personal_print, filename)
 
-        save_path = "Results/"
         file_name = os.path.join(save_path, 'mid_price_' + str(sess_id) + '.csv')
         print_trader_type_transac(personal_print, file_name)
 
+        transac_acc = calculate_acc_transaction(sess_id, save_path)
         # print_trader_type_transac(price_from_noise, 'price_noise.csv')
         # print_trader_type_transac(qty_and_time, 'qty_mmt.csv')
         print_trader_type_transac(ask_order, 'ask_order.csv')
@@ -449,6 +466,73 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dum
         # write trade_stats for this experiment NB end-of-session summary only
         trade_stats(sess_id, traders, tdump, time, exchange.publish_lob(time, lob_verbose))
 
+        return mid_price_acc, transac_acc
+
+def calculate_acc_transaction(session_id, save_path):
+        x = []
+        y = []
+        out_print = []
+        df1 = pd.read_csv('BSE2.csv')
+        col = len(df1.columns)
+
+        with open(save_path + 'transaction_' +str(session_id) +'.csv', 'r') as csvfile:
+                plots = csv.reader(csvfile, delimiter=',')
+                for count in range(1, col):
+                        first_call = True
+                        for row in plots:
+                                if len(row) > 0:
+                                        if not first_call:
+                                                # if float(row[count]) > 298 and float(row[count]) < 301:
+                                                #     val = math.log(float(row[count])/previous_val)
+                                                # it's the current value - previous value / previous value
+                                                val = float(row[count]) / previous_val
+                                                x.append(previous_time)
+                                                y.append(val)
+                                                previous_time = float(row[0])
+                                                previous_val = float(row[count])
+                                                out_print.append([previous_time, val])
+                                        else:
+                                                previous_val = float(row[count])
+                                                previous_time = float(row[0])
+                                                first_call = False
+        s = pd.Series(y)
+        val = s.autocorr()
+        return val
+
+def calculate_acc_mid_price(personal_print, session_id, save_path):
+        md_acc = []
+        time = []
+        md_returns = []
+        for data in personal_print:
+                time.append(data[0])
+                md_acc.append(data[1])
+        time.pop(len(time)-1)
+        s = pd.Series(md_acc)
+        first_call = True
+        previous_val = 0
+        for val in md_acc:
+                if not first_call:
+                        # if float(row[count]) > 298 and float(row[count]) < 301:
+                        #     val = math.log(float(row[count])/previous_val)
+                        # it's the current value - previous value / previous value
+                        current = float(val) / previous_val
+                        md_returns.append(current)
+                        previous_val = val
+                else:
+                        previous_val = float(val)
+                        first_call = False
+
+        s = pd.Series(md_returns)
+        auto_acc = s.autocorr()
+
+        fig, ax = plt.subplots(figsize=(10, 10))
+        ax.plot(time, md_returns, color='black', label='Return series ')
+        ax.set_xlabel('Time')
+        ax.set_ylabel('Return Series')
+        ax.set_ylim([0.9995, 1.0005])
+        plt.savefig(save_path + 'fig_return_' + str(session_id) + '.png')
+
+        return auto_acc
 def record_price_swing(exchange_current, exchange_before, record_ask_price, record_bid_price, order, price_swing_info, order_type, time):
         prev_ask_price = record_ask_price
         prev_bid_price = record_bid_price
@@ -597,7 +681,7 @@ def check_market_and_agent_integrity(exchange, traders, mcg_names):
                                         sys.exit("Order in trader does not match LOB")
 #############################
 
-def plot_transaction():
+def plot_transaction(trial_number, save_path):
         time_period = 100000
         time = np.arange(0, time_period, 1).tolist()
         eq = [180] * time_period
@@ -609,7 +693,7 @@ def plot_transaction():
 
         x = []
         y = []
-        with open('mid_price.csv', 'r') as csvfile:
+        with open(save_path + 'mid_price_' + str(trial_number) + '.csv', 'r') as csvfile:
                 plots = csv.reader(csvfile, delimiter=',')
                 for count in range(1, col):
                         skip = 0
@@ -664,7 +748,9 @@ def plot_transaction():
         ax.set_xlabel('Time')
         ax.set_ylabel('Price')
         ax.legend(loc="lower left")
-        plt.show()
+        ax.set_ylim([298.5,301])
+        plt.savefig(save_path + "/fig_mid_price_" + str(trial_number) + ".png")
+        # plt.show()
 
 
 # # Below here is where we set up and run a series of experiments
@@ -675,7 +761,7 @@ if __name__ == "__main__":
         # set up parameters for the session
 
         start_time = 0.0
-        end_time = 10000.0
+        end_time = 5000.0
         duration = end_time - start_time
 
 
@@ -711,18 +797,47 @@ if __name__ == "__main__":
 
         min_n = 1
 
-        trialnumber = 3
-        buyers_spec = [('LIQ', 2), ('SMB', 0), ('SMS', 0),
-                                                       ('ZIP', 0), ('MOMENTUM', 5), ('MARKET_M', 2),('MEAN_R', 5),('NOISE', 5)]
+        trialnumber = 31
+        buyers_spec = [('LIQ', 15), ('SMB', 0), ('SMS', 0),
+                                                       ('ZIP', 0), ('MOMENTUM', 30), ('MARKET_M', 15),('MEAN_R', 30),('NOISE', 30)]
         # sellers_spec = [('LIQ', 0), ('SMB', 0), ('SMS', 0),
         #                                                ('ZIP', 0), ('MOMENTUM', 0), ('MARKET_M', 0),('MEAN_R', 0),('NOISE', 2)]
         sellers_spec = buyers_spec
         traders_spec = {'sellers':sellers_spec, 'buyers':buyers_spec}
+        md_r = []
+        ts_acc = []
+        save_path = "2m-v2/"
+        file1 = open(save_path + "mid_price_auto_correlation.txt", "a")
+        for trialnumber in range(3):
+            md_return, transac_acc = market_session(trialnumber, start_time, end_time, traders_spec,
+                                       order_sched, tdump, False, False, save_path)
+            file1.write("Trial : " + str(trialnumber) + " : " + str(md_return) + "\n")
 
-        for trialnumber in range(1,20):
-                market_session(trialnumber, start_time, end_time, traders_spec,
-                                       order_sched, tdump, False, False)
-        plot_transaction()
+            md_r.append(md_return)
+            ts_acc.append(transac_acc)
+            plot_transaction(trialnumber, save_path)
+
+        file1.write("\n Mid-price auto correlation \n")
+        file1.write("\nMin : " + str(min(md_r)))
+        file1.write("\nMean : " + str(statistics.mean(md_r)))
+        file1.write("\nMax : " + str(max(md_r)))
+
+        file1.write("\n Transaction auto correlation \n")
+        file1.write("\nMin : " + str(min(ts_acc)))
+        file1.write("\nMean : " + str(statistics.mean(ts_acc)))
+        file1.write("\nMax : " + str(max(ts_acc)))
+        file1.close()
+
+        print("Mid price ACC")
+        print("Min : " + str(min(md_r)))
+        print("Mean : " + str(statistics.mean(md_r)))
+        print("Max : " + str(max(md_r)))
+        print("Transaction ACC")
+        print("Min : " + str(min(ts_acc)))
+        print("Mean : " + str(statistics.mean(ts_acc)))
+        print("Max : " + str(max(ts_acc)))
+
+        # print(md_r)
         tdump.flush()
         
 

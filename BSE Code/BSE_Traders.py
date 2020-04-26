@@ -520,8 +520,8 @@ class Market_Maker(Trader):
         self.period_counter = 0
         self.prices = numpy.array([0])
         self.last_orders = []
-        self.best_ask = 100.0 - 0.05
-        self.best_bid = 100.0 + 0.05
+        self.best_ask = 300.0 - 0.05
+        self.best_bid = 300.0 + 0.05
         self.nuetral = True
         self.n_bids_asks = []
         self.total_asks_submit = 0
@@ -762,8 +762,8 @@ class Liqudity_consumer(Trader):
         self.opposite_task = 'bids'
         self.opposte_cap = 'Bid'
         self.first_call = True
-        self.best_bid = 100 + 0.05
-        self.best_ask = 100 - 0.05
+        self.best_bid = 300 + 0.05
+        self.best_ask = 300 - 0.05
 
     def update_best_prices(self, lob):
         new_best_bid = self.best_bid
@@ -891,16 +891,17 @@ class Momentum_Trader(Trader):
         self.prices = numpy.array([0])
         self.first_call = True
         self.ask_wealth = 0
-        self.bid_wealth = 100000
+        self.bid_wealth = 250000
+        # 10,000,000
 
     def get_balance(self):
         return self.balance
     def update_moving_avg(self):
         current_price = numpy.array([(self.best_bid + self.best_ask) / 2])
 
-        if 2 < self.prices.size < 5:
+        if 2 < self.prices.size < self.nr:
             self.roc = (current_price - self.prices[self.prices.size - 2]) / self.prices[self.prices.size - 2]
-        elif self.prices.size > 5:
+        elif self.prices.size > self.nr:
             self.roc = (current_price - self.prices[self.prices.size - self.nr]) / self.prices[self.prices.size - self.nr]
         return None
 
@@ -1077,8 +1078,8 @@ class Noise_Trader(Trader):
         self.opposite_task = 'bids'
         self.opposite_cap = 'Bid'
         self.last_order = None
-        self.best_bid = 100.0 + 0.05
-        self.best_ask = 100.0 - 0.05
+        self.best_bid = 300.0 + 0.05
+        self.best_ask = 300.0 - 0.05
 
     def update_best_prices(self,lob):
 
