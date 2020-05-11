@@ -21,8 +21,6 @@ class Exchange(Orderbook):
         self.quote_id = order.qid + 1
         # if verbose : print('QUID: order.quid=%d self.quote.id=%d' % (order.qid, self.quote_id))
         tid = order.tid
-        #todo change here so it also takes ostyle
-        #if it's a MARKET ORDER, it shouldn't be added to the book does it?
         if order.otype == 'Bid':
             response = self.bids.book_add(order)
             best_price = self.bids.lob_anon[-1][0]
@@ -78,15 +76,6 @@ class Exchange(Orderbook):
     def process_order2(self, time, order, verbose):
         # receive an order and either add it to the relevant LOB (ie treat as limit order)
         # or if it crosses the best counterparty offer, execute it (treat as a market order)
-
-        # this will contain the lob information
-        # print("BID : ")
-        # for num in self.bids.orders:
-        #     print(str(self.bids.orders[num]) + ",")
-        # print("ASK : ")
-        # for num in self.asks.orders:
-        #     print(str(self.asks.orders[num]) + ',')
-        print_check = False
         oprice = order.price
         counterparty = []
         order_quantity = order.qty
@@ -108,22 +97,11 @@ class Exchange(Orderbook):
         cp_del_in_trader = False
 
         # if order is a Limit Order
-        if print_check:
-            print("______________________________LOB BOOK ______________________________________")
-            print("ASK SIDE : ")
-            print(self.asks.lob)
-            print("BID SIDE : ")
-            print(self.bids.lob)
-            print("______________________________END BOOK ______________________________________")
 
-
-        # todo add check loop so that the TID is not the same
         if order.ostyle == 'LIM':
 
             original_quantity = order.qty
             if order.otype == 'Bid':
-                # if False:
-                #     print("BID : Best ask : " + str(best_bid) + " >= " + str(best_ask) + " Orders : " + str(self.asks.n_orders > 0))
 
                 if self.asks.n_orders > 0 and best_bid >= best_ask:
                     if self.asks.n_orders == 1 and order.tid == self.asks.lob[best_ask][1][0][2]:
@@ -183,8 +161,6 @@ class Exchange(Orderbook):
         elif order.ostyle == 'MKT':
             remaining_quantity = 0
             original_quantity = order.qty
-            if print_check:
-                print("&&&& Process MKT Order")
             if order.otype == 'Bid':
                 if self.asks.n_orders > 0:
                     remaining_quantity = order.qty
@@ -200,8 +176,6 @@ class Exchange(Orderbook):
                         order_quantity = original_quantity - remaining_quantity
                     # delete order just incase it's still there in the LOB
                     self.bids.book_del(order)
-                    if print_check:
-                        print("************** CHECKED BID" + str(self.bids.lob) )
                     for price in self.bids.lob:
                         for check_ord in self.bids.lob[price][1]:
                             if check_ord[3] == order.qid:
@@ -221,9 +195,6 @@ class Exchange(Orderbook):
                         order_quantity = original_quantity - remaining_quantity
                     # delete order just incase it's still there
                     self.asks.book_del(order)
-
-                    if print_check:
-                        print("************** CHECKED ASK" + str(self.asks.lob))
                     for price in self.asks.lob:
                         for check_ord in self.asks.lob[price][1]:
                             if check_ord[3] == order.qid:
@@ -233,11 +204,6 @@ class Exchange(Orderbook):
         else:
             # we should never get here
             sys.exit('process_order() given neither Bid nor Ask')
-
-        if True:
-            print(" ##### TRADE ORIGINAL : " + str(order.tid) + "  COUNTER PARTY of TRADE : " + str(counterparty))
-            if len(counterparty) > 0 :
-                print(" ****** ACTUAL QUANTITY PERFORMED : " + str(order_quantity))
 
 
         # NB at this point we have deleted the order from the exchange's records
@@ -261,20 +227,11 @@ class Exchange(Orderbook):
                                       }
                 list_transac_rec.append(transaction_record)
                 self.tape.append(transaction_record)
-            # if len(counterparty) > 1:
-            #     for party in counterparty:
-            #         print(party)
-            #     print(list_transac_rec)
-            #     sys.exit("More than one opposite party - check for error before commenting out")
             return list_transac_rec, order_quantity
         else:
-            if print_check:
-                print("@@@@@ CAME HERE TO DELETE")
             if order.ostyle == 'MKT':
                 # def del_order(self, time, order, verbose):
                 self.del_order(time,order,False)
-                print(self.asks.lob)
-                print(self.bids.lob)
                 for price in self.asks.lob:
                     for check_ord in self.asks.lob[price][1]:
                         if check_ord[3] == order.qid:
