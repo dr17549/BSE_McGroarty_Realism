@@ -417,12 +417,12 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dum
         exchange.tape_dump(file_name, 'w', 'keep')
 
         acc = calculate_acc_mid_price(personal_print, sess_id, save_path)
-        print("Mid price acc returns: " + str(acc))
-        print("________________________________________________")
-        print("PRICE SWINGS " + str(len(price_swing_info)))
-        for swings in price_swing_info:
-                print("TIME : " + str(swings['time']) + "  SWING : " + str(swings['swing']) + "  TRADER_TYPE : "+ traders[swings['order'].tid].ttype
-                      + " QTY:  " + str(swings['order'].qty) + "\n")
+        # print("Mid price acc returns: " + str(acc))
+        # print("________________________________________________")
+        # print("PRICE SWINGS " + str(len(price_swing_info)))
+        # for swings in price_swing_info:
+        #         print("TIME : " + str(swings['time']) + "  SWING : " + str(swings['swing']) + "  TRADER_TYPE : "+ traders[swings['order'].tid].ttype
+        #               + " QTY:  " + str(swings['order'].qty) + "\n")
 
         # end of an experiment -- dump the tape
 
@@ -439,7 +439,7 @@ if __name__ == "__main__":
         # set up parameters for the session
 
         start_time = 0.0
-        end_time = 10000.0
+        end_time = 11000.0
         duration = end_time - start_time
 
 
@@ -476,17 +476,39 @@ if __name__ == "__main__":
         min_n = 1
 
         trialnumber = 3
-        buyers_spec = [('LIQ', 30), ('SMB', 0), ('SMS', 0),
-                                                       ('ZIP', 0), ('MOMENTUM', 30), ('MARKET_M', 30),('MEAN_R', 30),('NOISE', 30)]
+
+        # todo SET number of traders on each SIDE (not MARKET)
+        buyers_spec = [('LIQ', 0), ('SNPR', 0), ('ZIP', 31),
+                                                       ('ZIP', 0), ('MOMENTUM', 0), ('MARKET_M', 0),('MEAN_R', 0),('NOISE', 0)]
+
+        # todo Uncomment this if you want to run it with unequal number on each side
         # sellers_spec = [('LIQ', 0), ('SMB', 0), ('SMS', 0),
         #                                                ('ZIP', 0), ('MOMENTUM', 0), ('MARKET_M', 0),('MEAN_R', 0),('NOISE', 2)]
+        # todo COMMENT this line if you want to run it with unequal number on each side
         sellers_spec = buyers_spec
         traders_spec = {'sellers': sellers_spec, 'buyers': buyers_spec}
-        save_path = "exp2/"
+        save_path = "Result/"
         mdr = []
         ts_acc = []
 
-        for trialnumber in range(5):
+        # print(os.path.isfile(os.path.join(os.getcwd(),"/Result")))
+        if os.path.isdir("Result"):
+                # checks if path already exists
+                for i in range(100):
+                        check_path = "Result" + str(i)
+                        if not os.path.isdir(check_path):
+                                new_result_path = "Result" + str(i)
+                                save_path = new_result_path + str("/")
+                                path = os.path.join(new_result_path)
+                                os.mkdir(path)
+                                break
+        else:
+                directory = "Result"
+                path = os.path.join(directory)
+                os.mkdir(path)
+
+
+        for trialnumber in range(1):
                 directory = "spike_" + str(trialnumber)
                 path = os.path.join(save_path, directory)
                 os.mkdir(path)

@@ -1,59 +1,82 @@
-\documentclass[12pt]{report}
+% \documentclass[12pt]{report}
+\documentclass[ % the name of the author
+                    author={Dhammatorn Riewcharoon (dr17549)},
+                % the name of the supervisor
+                supervisor={Dr.John Cartlidge},
+                % the degree programme
+                    degree={BSc},
+                % the dissertation    title (which cannot be blank)
+                     title={Introducing realistic trading dynamics to the Bristol Stock Exchange},
+                % the dissertation subtitle (which can    be blank)
+                  subtitle={},
+                % the dissertation     type
+                %  type={enterprise},
+                % the year of submission
+                      year={2020} ]{dissertation}
 \usepackage[utf8]{inputenc}
-%\usepackage{algorithm2e}
-%\usepackage[linesnumbered]{algorithm2e}
-%\usepackage[linesnumbered,ruled]{algorithm2e}
-\usepackage[linesnumbered,ruled,vlined]{algorithm2e}
 \usepackage[a4paper,width=150mm,top=25mm,bottom=25mm]{geometry}
 \usepackage{placeins}
 \usepackage{graphicx}
 \usepackage{fancyhdr}
 \usepackage{subcaption}
+\usepackage[linesnumbered,ruled,vlined, algochapter]{algorithm2e}
 \usepackage[toc,page]{appendix}
-
 \pagestyle{fancy}
 \fancyhead[L]{}
 \graphicspath{ {./images/} }
 
-\title{
-{Introducing realistic trading dynamics to the Bristol Stock Exchange}\\
-{\large University of Bristol}\\
-{\includegraphics[height=3cm, width = 10cm]{/uob_logo.png}}
-}
-\author{Dhammatorn Riewcharoon (dr17549) BSc. supervised by Dr.John Cartildge }
-\date{2020}
-
-
 \begin{document}
 \maketitle
-\newpage
-\tableofcontents{}
+\frontmatter
+\makedecl
+
 \newpage
 
+\thispagestyle{plain}
+This project did not require ethical review, as determined by my supervisor Dr.John Cartlidge. 
+\newpage
+\thispagestyle{plain}
+\begin{center}
+    \vspace{0.9cm}
+    \textbf{Abstract}
+\end{center}
+The modern financial market is currently dominated by algorithmic trading agents, where they trade within less than a second. The study of these so-called agents have been more prevalent now than ever with the study of their effects such as price spikes which can cause havoc in the market becoming more important. 
+
+The BSE is University of Bristol’s trading platform to simulate the London Stock Exchange in a manageable and controllable environment. It is currently operating with one stock where agents such as the ZI-C, ZI-P or Sniper will trade with one another in a limit order book fashion similar to what is used in modern stock exchange system. This project aims to introduce other types of traders in the market which will introduce realistic trading dynamics to the simulation. These types of traders are introduced in an algorithmic way in McGroarty et al.’s 2018 paper High frequency trading strategies, market fragility and price spikes: an agent based model perspective \cite{McGroarty}. McGroarty et al. claims that these agents can simulate a market that mimics real financial exchange market dynamics.
+
+The project will not be as simple as extending the current BSE Python code to introduce more traders but also investigate how to adapt McGroarty et al.’s agents into the BSE. For example, the current BSE randomly chooses an agent in each time-step while McGroarty et al.’s traders act probabilistically and do not act on every time step. These changes replicate how traders react in the real market where each trader do not have to act in every time period possible but rather on the changes of price itself. We will then discuss how these agents provide a more realistic dynamic to the current BSE and how their parameters will effect the market dynamics as well as the occurrence of extreme price events such as price spikes. 
+\newpage
+
+\tableofcontents{}
+\newpage
+\pagenumbering{arabic}
 \chapter{Introduction}
 \input{Dissertation/Chapters/background}
 
-\chapter{Introducing realism into BSE} 
+\chapter{Implementation Overview} 
 \input{Dissertation/Chapters/implementation}
 
-\chapter{Testing} 
-\input{Dissertation/Chapters/testing}
-
 \chapter{Base Line results and Initial tests} 
-\input{Dissertation/Chapters/results}
+\input{Dissertation/Chapters/base_line}
 
-\chapter{McG Agents individual results} 
+\chapter{McG Agents and their behaviour} 
 \input{Dissertation/Chapters/mcg_indv}
 
-\chapter{Market experiment results} 
+\chapter{Oesch experiment results} 
 \input{Dissertation/Chapters/market_experiments}
+
+\chapter{McG experiment results} 
+\input{Dissertation/Chapters/McG_final}
+
+\chapter{Conclusion} 
+\input{Dissertation/Chapters/conclusion}
 
 \bibliographystyle{plain} % We choose the "plain" reference style
 \bibliography{research} % Entries are in the "refs.bib" file
 
-\begin{appendices}
-\chapter{Individual Agents test results}
-\input{Dissertation/Appendix/indv_appen}
-\end{appendices}
+% \begin{appendices}
+% \chapter{Individual Agents test results}
+% \input{Dissertation/Appendix/indv_appen}
+% \end{appendices}
 
 \end{document}

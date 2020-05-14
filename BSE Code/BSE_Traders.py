@@ -249,7 +249,8 @@ class Trader_Shaver(Trader):
 class Trader_Sniper(Trader):
 
         def getorder(self, time, countdown, lob):
-                lurk_threshold = 0.2
+                # changed this line for McG test
+                lurk_threshold = 0.1
                 shavegrowthrate = 3
                 shave = int(1.0 / (0.01 + countdown / (shavegrowthrate * lurk_threshold)))
                 submit_order = []
